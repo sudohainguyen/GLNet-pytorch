@@ -121,7 +121,7 @@ class DeepGlobe(data.Dataset):
     def __getitem__(self, index):
         sample = {}
         sample["id"] = self.ids[index][:-8]
-        image = Image.open(os.path.join(self.root, "Sat/" + self.ids[index]))  # w, h
+        image = Image.open(os.path.join(self.root, "images/" + self.ids[index]))  # w, h
         sample["image"] = image
         # sample['image'] = transforms.functional.adjust_contrast(image, 1.4)
         if self.label:
