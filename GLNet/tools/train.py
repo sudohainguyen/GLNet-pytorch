@@ -16,7 +16,7 @@ from GLNet.helper import (
     Evaluator,
     collate
 )
-from GLNet.option import TrainingOptions
+from GLNet.options import TrainingOptions
 from GLNet.utils import PhaseMode
 
 torch.backends.cudnn.deterministic = True
@@ -33,7 +33,6 @@ def main():
     lamb_fmreg = args.lamb_fmreg
     batch_size = args.batch_size
     n_class = args.n_class
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("mode:", mode.name)
 
@@ -127,7 +126,7 @@ def main():
                     "Train loss: %.3f; global mIoU: %.3f"
                     % (
                         cur_loss,
-                        np.mean(np.nan_to_num(score_train_global["iou"])),
+                        np.mean(np.nan_to_num(score_train_global["iou"]))
                     )
                 )
             else:
@@ -135,7 +134,7 @@ def main():
                     "Train loss: %.3f; agg mIoU: %.3f"
                     % (
                         cur_loss,
-                        np.mean(np.nan_to_num(score_train["iou"])),
+                        np.mean(np.nan_to_num(score_train["iou"]))
                     )
                 )
 
@@ -162,12 +161,12 @@ def main():
                             "global mIoU: %.3f"
                             % (np.mean(np.nan_to_num(score_val_global["iou"])))
                         )
-                        val_acc = np.mean(np.nan_to_num(score_val_global["iou"][1:]))
+                        val_acc = np.mean(np.nan_to_num(score_val_global["iou"]))
                     else:
                         tbar.set_description(
                             "agg mIoU: %.3f" % (np.mean(np.nan_to_num(score_val["iou"])))
                         )
-                        val_acc = np.mean(np.nan_to_num(score_val["iou"][1:]))
+                        val_acc = np.mean(np.nan_to_num(score_val["iou"]))
 
                     # Only save best model which have highest validation accuracy
                     if val_acc > best_pred:
@@ -212,8 +211,8 @@ def main():
                     "epoch [{}/{}] IoU: train = {:.4f}, val = {:.4f}\n".format(
                         epoch + 1,
                         num_epochs,
-                        np.mean(np.nan_to_num(score_train["iou"][1:])),
-                        np.mean(np.nan_to_num(score_val["iou"][1:])),
+                        np.mean(np.nan_to_num(score_train["iou"])),
+                        np.mean(np.nan_to_num(score_val["iou"])),
                     )
                 )
                 log = (
@@ -221,8 +220,8 @@ def main():
                     + "epoch [{}/{}] Local  -- IoU: train = {:.4f}, val = {:.4f}\n".format(
                         epoch + 1,
                         num_epochs,
-                        np.mean(np.nan_to_num(score_train_local["iou"][1:])),
-                        np.mean(np.nan_to_num(score_val_local["iou"][1:])),
+                        np.mean(np.nan_to_num(score_train_local["iou"])),
+                        np.mean(np.nan_to_num(score_val_local["iou"])),
                     )
                 )
                 log = (
@@ -230,13 +229,11 @@ def main():
                     + "epoch [{}/{}] Global -- IoU: train = {:.4f}, val = {:.4f}\n".format(
                         epoch + 1,
                         num_epochs,
-                        np.mean(np.nan_to_num(score_train_global["iou"][1:])),
-                        np.mean(np.nan_to_num(score_val_global["iou"][1:])),
+                        np.mean(np.nan_to_num(score_train_global["iou"])),
+                        np.mean(np.nan_to_num(score_val_global["iou"]))
                     )
                 )
-                # log = log + 'epoch [{}/{}] IoU: train = {:.4f}, val = {:.4f}'.format(epoch+1, num_epochs, np.mean(np.nan_to_num(score_train["iou"])), np.mean(np.nan_to_num(score_val["iou"]))) + "\n"
-                # log = log + 'epoch [{}/{}] Local  -- IoU: train = {:.4f}, val = {:.4f}'.format(epoch+1, num_epochs, np.mean(np.nan_to_num(score_train_local["iou"])), np.mean(np.nan_to_num(score_val_local["iou"]))) + "\n"
-                # log = log + 'epoch [{}/{}] Global -- IoU: train = {:.4f}, val = {:.4f}'.format(epoch+1, num_epochs, np.mean(np.nan_to_num(score_train_global["iou"])), np.mean(np.nan_to_num(score_val_global["iou"]))) + "\n"
+
                 log = log + f"Train: {score_train['iou']}\n"
                 log = log + f"Local train: {score_train_local['iou']}"
                 log = log + f"Global train: {score_train_global['iou']}"

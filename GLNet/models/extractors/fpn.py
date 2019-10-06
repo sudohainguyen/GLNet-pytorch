@@ -1,10 +1,8 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-import numpy as np
 
-from models.backbones.resnet import resnet50
-from models.functional import upsample_add, concatenate
+from ..functional import upsample_add, concatenate
 
 class FPN_Global(nn.Module):
     def __init__(self, num_class):
@@ -48,11 +46,11 @@ class FPN_Global(nn.Module):
         self.smooth4_2_ext = nn.Conv2d(256 * 2, 128, kernel_size=3, stride=1, padding=1)
         self.smooth = nn.Conv2d(128 * 4 * 2, 128 * 4, kernel_size=3, stride=1, padding=1)
 
-    def forward(self, backbone_outputs, local_fms=None, ps_exts=None, a=None):
+    def forward(self, backbone_outputs, additional_fms=None, ps_exts=None):
         c2, c3, c4, c5 = backbone_outputs
         
-        if local_fms:
-            c2_ext, c3_ext, c4_ext, c5_ext = local_fms
+        if additional_fms:
+            c2_ext, c3_ext, c4_ext, c5_ext = additional_fms
 
         if ps_exts:
             ps0_ext, ps1_ext, ps2_ext = ps_exts
@@ -144,11 +142,11 @@ class FPN_Local(nn.Module):
         self.smooth = nn.Conv2d(128 * 4 * fold, 128 * 4, kernel_size=3, stride=1, padding=1)
         self.classify = nn.Conv2d(128 * 4, num_class, kernel_size=3, stride=1, padding=1)
 
-    def forward(self, backbone_outputs, local_fms=None, ps_exts=None):
+    def forward(self, backbone_outputs, additional_fms=None, ps_exts=None):
         c2, c3, c4, c5 = backbone_outputs
         
-        if local_fms:
-            c2_ext, c3_ext, c4_ext, c5_ext = local_fms
+        if additional_fms:
+            c2_ext, c3_ext, c4_ext, c5_ext = additional_fms
 
         if ps_exts:
             ps0_ext, ps1_ext, ps2_ext = ps_exts

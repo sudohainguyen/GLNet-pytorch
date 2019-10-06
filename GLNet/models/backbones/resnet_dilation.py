@@ -5,7 +5,7 @@ import math
 import torch
 import torch.utils.model_zoo as model_zoo
 import torch.nn as nn
-from utils.model_store import get_model_file
+from GLNet.utils.model_store import get_model_file
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152', 'BasicBlock', 'Bottleneck']
