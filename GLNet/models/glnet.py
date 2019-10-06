@@ -129,7 +129,7 @@ class GLNet(nn.Module):
         self.ps1_l = None
         self.ps2_l = None
         self.ps3_l = []
-        self.output_l = []
+        # self.output_l = []
 
         self.c2_b = None
         self.c3_b = None
@@ -152,7 +152,7 @@ class GLNet(nn.Module):
         self.ps23_b = None
 
         self.ps3_b = []
-        self.output_b = []
+        # self.output_b = []
 
         self.patch_n = 0
 
@@ -307,7 +307,6 @@ class GLNet(nn.Module):
         top_lefts,
         ratio,
         mode=1,
-        global_model=None,
         n_patch=None,
     ):
         if mode is PhaseMode.GlobalOnly:

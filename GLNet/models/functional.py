@@ -41,7 +41,7 @@ def sample_grid(fm, bbox, sample_size):
     :param sample_size: (oH, oW) the point to sample in height dimension and width dimension
     :return: tensor(b, c, oH, oW) sampled tensor
     """
-    b, c, h, w = fm.shape
+    b = fm.shape[0]
     b_bbox = len(bbox)
     bbox = [x * 2 - 1 for x in bbox]  # range transform
     if b != b_bbox and b == 1:
