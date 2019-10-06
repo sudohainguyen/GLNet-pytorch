@@ -12,9 +12,10 @@ from torch.autograd import Variable
 from torchvision import transforms
 from PIL import Image
 
-from models.fpn_global_local_fmreg_ensemble import fpn
-from utils import PhaseMode
-from utils.metrics import ConfusionMatrix
+from .models import GLNet
+from .models.functional import crop_global
+from .utils import PhaseMode
+from .utils.metrics import ConfusionMatrix
 from dataset.deep_globe import RGB_mapping_to_class
 
 # torch.cuda.synchronize()
@@ -39,7 +40,6 @@ def resize(images, shape, label=False):
     for i, img in enumerate(images):
         if label:
             resized[i] = img.resize(shape, Image.NEAREST)
-            # resized[i] = images[i].resize(shape, Image.BILINEAR)
         else:
             resized[i] = img.resize(shape, Image.BILINEAR).convert('RGB')
     return resized
@@ -143,21 +143,6 @@ def global2patch(images, p_size):
     return patches, coordinates, templates, sizes, ratios
 
 
-# def global2patch(images, n, step, size):
-#     '''
-#     image/label => patches
-#     size: patch size
-#     return: list of PIL patch images
-#     '''
-#     patches = [ [images[i]] * (n ** 2) for i in range(len(images)) ]
-#     for i in range(len(images)):
-#         for x in range(n): # height / upper
-#             for y in range(n): # width / left
-#                 patches[i][x * n + y] = transforms.functional.crop(images[i], x * step, y * step, size[0], size[1])
-#                 # patches[i][x * n + y] = images[i].crop((y * step, x * step, y * step + size[1], x * step + size[0]))
-#     return patches
-
-
 def patch2global(patches, n_class, sizes, coordinates, p_size):
     """
     predicted patches (after classify layer) => predictions
@@ -188,17 +173,17 @@ def patch2global(patches, n_class, sizes, coordinates, p_size):
 #     return predictions
 
 
-def template_patch2global(size0, size_p, n, step):
-    template = np.zeros(size0)
+def template_patch2global(size_g, size_p, n, step):
+    template = np.zeros(size_g)
     coordinates = [(0, 0)] * n ** 2
     patch = np.ones(size_p)
-    step = (size0[0] - size_p[0]) // (n - 1)
+    step = (size_g[0] - size_p[0]) // (n - 1)
     x = y = 0
     i = 0
-    while x + size_p[0] <= size0[0]:
-        while y + size_p[1] <= size0[1]:
+    while x + size_p[0] <= size_g[0]:
+        while y + size_p[1] <= size_g[1]:
             template[x : x + size_p[0], y : y + size_p[1]] += patch
-            coordinates[i] = (1.0 * x / size0[0], 1.0 * y / size0[1])
+            coordinates[i] = (1.0 * x / size_g[0], 1.0 * y / size_g[1])
             i += 1
             y += step
         x += step
@@ -238,7 +223,7 @@ def collate_test(batch):
 def create_model_load_weights(
     n_class, mode=1, evaluation=False, path_g=None, path_g2l=None, path_l2g=None
 ):
-    model = fpn(n_class)
+    model = GLNet(n_class)
     model = nn.DataParallel(model)
     model = model.cuda()
 
@@ -270,7 +255,7 @@ def create_model_load_weights(
     global_fixed = None
     if mode is PhaseMode.GlobalFromLocal:
         # load fixed basic global branch
-        global_fixed = fpn(n_class)
+        global_fixed = GLNet(n_class)
         global_fixed = nn.DataParallel(global_fixed)
         global_fixed = global_fixed.cuda()
         partial = torch.load(path_g)
@@ -345,7 +330,7 @@ def get_optimizer(model, mode=1, learning_rate=2e-5):
 
 
 class Trainer(object):
-    # def __init__(self, criterion, optimizer, n_class, size0, size_g, size_p, n, sub_batch_size=6, mode=1, lamb_fmreg=0.15):
+
     def __init__(
         self,
         criterion,
@@ -363,17 +348,13 @@ class Trainer(object):
         self.metrics_local = ConfusionMatrix(n_class)
         self.metrics = ConfusionMatrix(n_class)
         self.n_class = n_class
-        # self.size0 = size0
+
         self.size_g = size_g
         self.size_p = size_p
-        # self.n = n
+
         self.sub_batch_size = sub_batch_size
         self.mode = mode
         self.lamb_fmreg = lamb_fmreg
-
-        # self.ratio = float(size_p[0]) / size0[0]
-        # self.step = (size0[0] - size_p[0]) // (n - 1)
-        # self.template, self.coordinates = template_patch2global(size0, size_p, n, self.step)
 
     def set_train(self, model):
         model.module.ensemble_conv.train()
@@ -407,10 +388,8 @@ class Trainer(object):
 
         images_glb = resize(images, self.size_g)  # list of resized PIL images
         images_glb = images_transform(images_glb)
-        labels_glb = resize(
-            labels, (self.size_g[0] // 4, self.size_g[1] // 4), label=True
-        )  # down 1/4 for loss
-        # labels_glb = resize(labels, self.size_g, label=True) # must downsample image for reduced GPU memory
+
+        labels_glb = resize(labels, (self.size_g[0] // 4, self.size_g[1] // 4), label=True) # FPN down 1/4, for loss
         labels_glb = masks_transform(labels_glb)  # 127 * 127 * 8 = 129032
 
         if self.mode is PhaseMode.LocalFromGlobal or self.mode is PhaseMode.GlobalFromLocal:
@@ -419,9 +398,7 @@ class Trainer(object):
                 images, self.size_p
             )
             label_patches, _, _, _, _ = global2patch(labels, self.size_p)
-            # patches, label_patches = global2patch(images, self.n, self.step, self.size_p), global2patch(labels, self.n, self.step, self.size_p)
-            # predicted_patches = [ np.zeros((self.n**2, self.n_class, self.size_p[0], self.size_p[1])) for i in range(len(images)) ]
-            # predicted_ensembles = [ np.zeros((self.n**2, self.n_class, self.size_p[0], self.size_p[1])) for i in range(len(images)) ]
+            
             predicted_patches = [
                 np.zeros(
                     (len(coordinates[i]), self.n_class, self.size_p[0], self.size_p[1])
@@ -506,7 +483,6 @@ class Trainer(object):
             # collect predictions from patches
             for i in range(len(images)):
                 j = 0
-                # while j < self.n**2:
                 while j < len(coordinates[i]):
                     patches_var = images_transform(
                         patches[i][j : j + self.sub_batch_size]
@@ -520,7 +496,7 @@ class Trainer(object):
                         [j, j + self.sub_batch_size],
                         len(images),
                         global_model=global_fixed,
-                        template=templates[0],
+                        template=templates[i],
                         n_patch_all=len(coordinates[i]),
                     )
                     predicted_patches[i][j : j + output_patches.size()[0]] = (
@@ -551,7 +527,7 @@ class Trainer(object):
                     # label_patches_var = masks_transform(resize(label_patches[i][j : j+self.sub_batch_size], self.size_p, label=True))
                     fl = fm_patches[i][j : j + self.sub_batch_size].cuda()
                     # fg = model.module._crop_global(fm_global[i:i+1], self.coordinates[j:j+self.sub_batch_size], self.ratio)[0]
-                    fg = model.module._crop_global(
+                    fg = crop_global(
                         fm_global[i : i + 1],
                         coordinates[i][j : j + self.sub_batch_size],
                         ratios[i],
@@ -598,12 +574,8 @@ class Trainer(object):
 
         if self.mode is PhaseMode.LocalFromGlobal or self.mode is PhaseMode.GlobalFromLocal:
             # patch predictions 
-            # scores_local = np.array(patch2global(predicted_patches, self.n_class, self.n, self.step, self.size0, self.size_p, len(images))) # merge softmax scores from patches (overlaps)
-            scores_local = np.array(
-                patch2global(
-                    predicted_patches, self.n_class, sizes, coordinates, self.size_p
-                )
-            )  # merge softmax scores from patches (overlaps)
+            # merge softmax scores from patches (overlaps)
+            scores_local = np.array(patch2global(predicted_patches, self.n_class, sizes, coordinates, self.size_p))  
             predictions_local = scores_local.argmax(1)  # b, h, w
             self.metrics_local.update(labels_npy, predictions_local)
             
@@ -620,23 +592,18 @@ class Trainer(object):
 
 
 class Evaluator(object):
-    # def __init__(self, n_class, size0, size_g, size_p, n, sub_batch_size=6, mode=1, test=False):
     def __init__(self, n_class, size_g, size_p, sub_batch_size=6, mode=1, test=False):
         self.metrics_global = ConfusionMatrix(n_class)
         self.metrics_local = ConfusionMatrix(n_class)
         self.metrics = ConfusionMatrix(n_class)
         self.n_class = n_class
-        # self.size0 = size0
+    
         self.size_g = size_g
         self.size_p = size_p
-        # self.n = n
+
         self.sub_batch_size = sub_batch_size
         self.mode = mode
         self.test = test
-
-        # self.ratio = float(size_p[0]) / size0[0]
-        # self.step = (size0[0] - size_p[0]) // (n - 1)
-        # self.template, self.coordinates = template_patch2global(size0, size_p, n, self.step)
 
         if test:
             self.flip_range = [False, True]
@@ -904,7 +871,7 @@ class Evaluator(object):
                                     [j, j + self.sub_batch_size],
                                     len(images),
                                     global_model=global_fixed,
-                                    template=templates[0],
+                                    template=templates[i],
                                     n_patch_all=len(coordinates[i]),
                                 )
                                 predicted_patches[i][
@@ -938,11 +905,10 @@ class Evaluator(object):
                             while j < len(coordinates[i]):
                                 fl = fm_patches[i][j : j + self.sub_batch_size].cuda()
                                 # fg = model.module._crop_global(fm_global[i:i+1], self.coordinates[j:j+self.sub_batch_size], self.ratio)[0]
-                                fg = model.module._crop_global(
+                                fg = crop_global(
                                     fm_global[i : i + 1],
                                     coordinates[i][j : j + self.sub_batch_size],
-                                    ratios[i],
-                                )[0]
+                                    ratios[i])[0]
                                 fg = F.interpolate(
                                     fg, size=fl.size()[2:], mode="bilinear"
                                 )
@@ -1034,7 +1000,6 @@ class Evaluator(object):
                                 )  # merge softmax scores from patches (overlaps)
 
             # global predictions 
-            # predictions_global = F.interpolate(torch.Tensor(outputs_global), self.size0, mode='nearest').argmax(1).detach().numpy()
             outputs_global = torch.Tensor(outputs_global)
             predictions_global = [
                 F.interpolate(
