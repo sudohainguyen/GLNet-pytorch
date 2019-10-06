@@ -16,7 +16,7 @@ from .models import GLNet
 from .models.functional import crop_global
 from .utils import PhaseMode
 from .utils.metrics import ConfusionMatrix
-from dataset.deep_globe import RGB_mapping_to_class
+from .dataset.deep_globe import RGB_mapping_to_class
 
 # torch.cuda.synchronize()
 # torch.backends.cudnn.benchmark = True
