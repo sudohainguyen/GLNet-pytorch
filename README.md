@@ -4,6 +4,8 @@
 
 Pytorch unofficial implementation of GLNet Semantic Segmentation as described in [Collaborative Global-Local Networks for Memory-Efﬁcient Segmentation of Ultra-High Resolution Images](https://arxiv.org/abs/1905.06368) by Wuyang Chen*, Ziyu Jiang*, Zhangyang Wang, Kexin Cui, and Xiaoning Qian
 
+## Prerequisites
+
 ## Installation
 
 ## Training
