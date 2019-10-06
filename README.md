@@ -28,7 +28,7 @@ Pytorch unofficial implementation of GLNet Semantic Segmentation as described in
 ```
 
 ## Acknowledgement
-This repository is inspired by [author's repo](https://github.com/TAMU-VITA/GLNet)
+This repository is inspired by [the original Pytorch version](https://github.com/TAMU-VITA/GLNet) and by the code structure of [keras-retinanet](https://github.com/fizyr/keras-retinanet)
 
 <!--- ### Personal Acknowledgement
 Wuyang, the author of this work, would like to thank his wife Ye Yuan for her love and great support. -->

@@ -8,7 +8,7 @@ import warnings
 import zipfile
 import tarfile
 import numpy as np
-from enums import PhaseMode
+from .enums import PhaseMode
 try:
     import requests
 except ImportError:

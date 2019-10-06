@@ -1,13 +1,13 @@
-export CUDA_VISIBLE_DEVICES=0
-python train_deep_globe.py \
+export CUDA_VISIBLE_DEVICES=0,1
+python GLNet/tools/train.py \
 --n_class 7 \
---data_path "../../datasets/deep-globe/" \
+--data_path "../../datasets/DeepGlobe_mod/" \
 --model_path "../../checkpoints" \
 --log_path "../../logs" \
 --task_name "fpn_global.508_lr2e5" \
 --mode 1 \
---batch_size 8 \
---sub_batch_size 8 \
+--batch_size 32 \
+--sub_batch_size 32 \
 --size_g 508 \
 --size_p 508 \
 #--evaluation \

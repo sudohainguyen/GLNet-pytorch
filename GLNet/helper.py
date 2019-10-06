@@ -283,10 +283,10 @@ def create_model_load_weights(
         model.load_state_dict(state)
 
     if mode is PhaseMode.GlobalOnly or mode is PhaseMode.GlobalFromLocal:
-        model.module.resnet_local.eval()
+        model.module.backbone_local.eval()
         model.module.fpn_local.eval()
     else:
-        model.module.resnet_global.eval()
+        model.module.backbone_global.eval()
         model.module.fpn_global.eval()
 
     return model, global_fixed
@@ -298,10 +298,10 @@ def get_optimizer(model, mode=1, learning_rate=2e-5):
         optimizer = torch.optim.Adam(
             [
                 {
-                    "params": model.module.resnet_global.parameters(),
+                    "params": model.module.backbone_global.parameters(),
                     "lr": learning_rate,
                 },
-                {"params": model.module.resnet_local.parameters(), "lr": 0},
+                {"params": model.module.backbone_local.parameters(), "lr": 0},
                 {"params": model.module.fpn_global.parameters(), "lr": learning_rate},
                 {"params": model.module.fpn_local.parameters(), "lr": 0},
                 {
@@ -315,8 +315,8 @@ def get_optimizer(model, mode=1, learning_rate=2e-5):
         # train local
         optimizer = torch.optim.Adam(
             [
-                {"params": model.module.resnet_global.parameters(), "lr": 0},
-                {"params": model.module.resnet_local.parameters(), "lr": learning_rate},
+                {"params": model.module.backbone_global.parameters(), "lr": 0},
+                {"params": model.module.backbone_local.parameters(), "lr": learning_rate},
                 {"params": model.module.fpn_global.parameters(), "lr": 0},
                 {"params": model.module.fpn_local.parameters(), "lr": learning_rate},
                 {
@@ -359,10 +359,10 @@ class Trainer(object):
     def set_train(self, model):
         model.module.ensemble_conv.train()
         if self.mode is PhaseMode.GlobalOnly or self.mode is PhaseMode.GlobalFromLocal:
-            model.module.resnet_global.train()
+            model.module.backbone_global.train()
             model.module.fpn_global.train()
         else:
-            model.module.resnet_local.train()
+            model.module.backbone_local.train()
             model.module.fpn_local.train()
 
     def get_scores(self):

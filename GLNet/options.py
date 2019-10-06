@@ -123,7 +123,7 @@ class TrainingOptions:
             type=str,
             default='resnet50',
             help='Backbone model used by FPN.')
-        # the parser
+
         _check_args(parser)
         self.parser = parser
     

@@ -1,23 +1,27 @@
 import os
+import sys
 import numpy as np
 import torch
 from torchvision import transforms
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
-from ..dataset.deep_globe import DeepGlobe, classToRGB, is_image_file
-from ..utils.loss import FocalLoss
-from ..utils.lovasz_losses import lovasz_softmax
-from ..utils.lr_scheduler import LR_Scheduler
-from ..helper import (
+if __name__ == "__main__" and __package__ is None:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from GLNet.dataset.deep_globe import DeepGlobe, classToRGB, is_image_file
+from GLNet.utils.loss import FocalLoss
+from GLNet.utils.lovasz_losses import lovasz_softmax
+from GLNet.utils.lr_scheduler import LR_Scheduler
+from GLNet.helper import (
     create_model_load_weights,
     get_optimizer,
     Trainer,
     Evaluator,
     collate
 )
-from ..options import TrainingOptions
-from ..utils import PhaseMode
+from GLNet.options import TrainingOptions
+from GLNet.utils import PhaseMode
 
 torch.backends.cudnn.deterministic = True
 

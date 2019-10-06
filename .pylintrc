@@ -144,7 +144,8 @@ disable=print-statement,
         bad-continuation,
         invalid-name,
         missing-docstring,
-        arguments-differ
+        arguments-differ,
+        bad-whitespace
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
