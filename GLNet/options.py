@@ -23,6 +23,7 @@ def _check_args(parsed_args):
     """
     if 'resnet' not in parsed_args.backbone:
         warnings.warn('Using experimental backbone {}. Only resnet50 has been properly tested.'.format(parsed_args.backbone))
+    return parsed_args
 
 class TrainingOptions:
     def __init__(self):
@@ -70,13 +71,13 @@ class TrainingOptions:
         parser.add_argument(
             "--batch_size",
             type=int,
-            default=6,
+            default=8,
             help="batch size for origin global image (without downsampling)",
         )
         parser.add_argument(
             "--sub_batch_size",
             type=int,
-            default=6,
+            default=8,
             help="batch size for using local image patches",
         )
         parser.add_argument(
@@ -123,8 +124,7 @@ class TrainingOptions:
             type=str,
             default='resnet50',
             help='Backbone model used by FPN.')
-
-        _check_args(parser)
+        
         self.parser = parser
     
     def parse(self):
@@ -138,7 +138,7 @@ class TrainingOptions:
             args.lr = 2e-5
         
         args.mode = PhaseMode.int_to_phasemode(args.mode)
-        return args
+        return _check_args(args)
 
 class Options:
     def __init__(self):

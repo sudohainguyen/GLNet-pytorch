@@ -28,7 +28,7 @@ torch.backends.cudnn.deterministic = True
 def main():
     args = TrainingOptions().parse()
     print(args.task_name)
-
+    
     mode = args.mode
     data_path = args.data_path
     model_path = args.model_path
