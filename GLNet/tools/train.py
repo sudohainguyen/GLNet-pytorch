@@ -5,19 +5,19 @@ from torchvision import transforms
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
-from GLNet.dataset.deep_globe import DeepGlobe, classToRGB, is_image_file
-from GLNet.utils.loss import FocalLoss
-from GLNet.utils.lovasz_losses import lovasz_softmax
-from GLNet.utils.lr_scheduler import LR_Scheduler
-from GLNet.helper import (
+from ..dataset.deep_globe import DeepGlobe, classToRGB, is_image_file
+from ..utils.loss import FocalLoss
+from ..utils.lovasz_losses import lovasz_softmax
+from ..utils.lr_scheduler import LR_Scheduler
+from ..helper import (
     create_model_load_weights,
     get_optimizer,
     Trainer,
     Evaluator,
     collate
 )
-from GLNet.options import TrainingOptions
-from GLNet.utils import PhaseMode
+from ..options import TrainingOptions
+from ..utils import PhaseMode
 
 torch.backends.cudnn.deterministic = True
 
