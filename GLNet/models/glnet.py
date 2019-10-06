@@ -306,7 +306,7 @@ class GLNet(nn.Module):
         patches,
         top_lefts,
         ratio,
-        mode=1,
+        mode=PhaseMode.GlobalOnly,
         n_patch=None,
     ):
         if mode is PhaseMode.GlobalOnly:

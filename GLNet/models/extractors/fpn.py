@@ -51,12 +51,13 @@ class FPN_Global(nn.Module):
         
         if additional_fms:
             c2_ext, c3_ext, c4_ext, c5_ext = additional_fms
-
+        
+        ps0_ext, ps1_ext, ps2_ext = None, None, None
         if ps_exts:
             ps0_ext, ps1_ext, ps2_ext = ps_exts
         
         # Top-down
-        if c5_ext is None:
+        if additional_fms is None:
             p5 = self.toplayer(c5)
             p4 = upsample_add(p5, self.latlayer1(c4))
             p3 = upsample_add(p4, self.latlayer2(c3))

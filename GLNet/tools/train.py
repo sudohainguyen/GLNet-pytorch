@@ -96,7 +96,8 @@ def main():
 
     optimizer = get_optimizer(model, mode, learning_rate=learning_rate)
     scheduler = LR_Scheduler("poly", learning_rate, num_epochs, len(dataloader_train))
-    criterion = lambda x, y: 0.5 * FocalLoss(x, y) + 0.5 * lovasz_softmax(x, y)
+    focalloss = FocalLoss(gamma=3)
+    criterion = lambda x, y: 0.5 * focalloss(x, y) + 0.5 * lovasz_softmax(x, y)
     
     writer = SummaryWriter(log_dir=args.log_path + args.task_name)
     f_log = open(args.log_path + args.task_name + ".log", "w")

@@ -221,7 +221,7 @@ def collate_test(batch):
 
 
 def create_model_load_weights(
-    n_class, mode=1, evaluation=False, path_g=None, path_g2l=None, path_l2g=None
+    n_class, mode=PhaseMode.GlobalOnly, evaluation=False, path_g=None, path_g2l=None, path_l2g=None
 ):
     model = GLNet(n_class)
     model = nn.DataParallel(model)
@@ -339,7 +339,7 @@ class Trainer(object):
         size_g,
         size_p,
         sub_batch_size=6,
-        mode=1,
+        mode=PhaseMode.GlobalOnly,
         lamb_fmreg=0.15,
     ):
         self.criterion = criterion
@@ -592,7 +592,7 @@ class Trainer(object):
 
 
 class Evaluator(object):
-    def __init__(self, n_class, size_g, size_p, sub_batch_size=6, mode=1, test=False):
+    def __init__(self, n_class, size_g, size_p, sub_batch_size=6, mode=PhaseMode.GlobalOnly, test=False):
         self.metrics_global = ConfusionMatrix(n_class)
         self.metrics_local = ConfusionMatrix(n_class)
         self.metrics = ConfusionMatrix(n_class)
