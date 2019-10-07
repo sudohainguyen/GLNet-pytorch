@@ -125,20 +125,20 @@ class DeepGlobe(data.Dataset):
         sample["image"] = image
         # sample['image'] = transforms.functional.adjust_contrast(image, 1.4)
         if self.label:
-            # label = scipy.io.loadmat(join(self.root, 'Notification/' + self.ids[index].replace('_sat.jpg', '_mask.mat')))["label"]
-            # label = Image.fromarray(label)
             label = Image.open(
                 os.path.join(
                     self.root,
                     "Label/" + self.ids[index].replace("_sat.jpg", "_mask.png"),
                 )
             )
+            classmap = RGB_mapping_to_class(np.array(label))
+            label = Image.fromarray(classmap)
             sample["label"] = label
         if self.transform and self.label:
             image, label = self._transform(image, label)
             sample["image"] = image
             sample["label"] = label
-        # return {'image': image.astype(np.float32), 'label': label.astype(np.int64)}
+        # print(np.array(sample['label']).astype('int32').shape)
         return sample
 
     def _transform(self, image, label):

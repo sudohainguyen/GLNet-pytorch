@@ -62,13 +62,6 @@ class Trainer(object):
 
     def train(self, sample, model, global_fixed):
         images, labels = sample["image"], sample["label"]  # PIL images
-        # lbls = [RGB_mapping_to_class(np.array(label)) for label in labels]
-        # labels = [Image.fromarray(lbl) for lbl in lbls]
-        # del lbls
-
-        labels_npy = masks_transform(
-            labels, numpy=True
-        )  # label of origin size in numpy
 
         images_glb = resize(images, self.size_g)  # list of resized PIL images
         images_glb = images_transform(images_glb)
@@ -254,6 +247,7 @@ class Trainer(object):
             .numpy()
             for i in range(len(images))
         ]
+        labels_npy = masks_transform(labels, numpy=True)  # label of origin size in numpy
         self.metrics_global.update(labels_npy, predictions_global)
 
         if self.mode is PhaseMode.LocalFromGlobal or self.mode is PhaseMode.GlobalFromLocal:

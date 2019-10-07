@@ -245,12 +245,12 @@ def main():
                 )
 
                 log = log + f"Train: {score_train['iou']}\n"
-                log = log + f"Local train: {score_train_local['iou']}"
-                log = log + f"Global train: {score_train_global['iou']}"
+                log = log + f"Local train: {score_train_local['iou']}\n"
+                log = log + f"Global train: {score_train_global['iou']}\n"
                 # if args.validation:
                 log = log + f"Val: {score_val['iou']}\n"
-                log = log + f"Local val: {score_val_local['iou']}"
-                log = log + f"Global val: {score_val_global['iou']}"
+                log = log + f"Local val: {score_val_local['iou']}\n"
+                log = log + f"Global val: {score_val_global['iou']}\n"
 
                 
                 log += "================================\n"

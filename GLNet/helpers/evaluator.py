@@ -51,11 +51,6 @@ class Evaluator(object):
     def eval_test(self, sample, model, global_fixed):
         with torch.no_grad():
             images = sample["image"]
-            if not self.test:
-                labels = sample["label"]  # PIL images
-                # lbls = [RGB_mapping_to_class(np.array(label)) for label in labels]
-                # labels = [Image.fromarray(lbl) for lbl in lbls]
-                labels_npy = masks_transform(labels, numpy=True)
 
             images_global = resize(images, self.size_g)
             outputs_global = np.zeros(
@@ -436,20 +431,24 @@ class Evaluator(object):
                 for i in range(len(images))
             ]
             if not self.test:
+                # labels = sample["label"]  # PIL images
+                # lbls = [RGB_mapping_to_class(np.array(label)) for label in labels]
+                # labels = [Image.fromarray(lbl) for lbl in lbls]
+                labels_npy = masks_transform(sample["label"], numpy=True)
                 self.metrics_global.update(labels_npy, predictions_global)
 
             if self.mode is PhaseMode.LocalFromGlobal or self.mode is PhaseMode.GlobalFromLocal:
                 # patch predictions 
                 # predictions_local = scores_local.argmax(1) # b, h, w
                 predictions_local = [score.argmax(1)[0] for score in scores_local]
-                if not self.test:
-                    self.metrics_local.update(labels_npy, predictions_local)
+                # if not self.test:
+                #     self.metrics_local.update(labels_npy, predictions_local)
                 
                 # combined/ensemble predictions 
                 # predictions = scores.argmax(1) # b, h, w
                 predictions = [score.argmax(1)[0] for score in scores]
                 if not self.test:
+                    self.metrics_local.update(labels_npy, predictions_local)
                     self.metrics.update(labels_npy, predictions)
                 return predictions, predictions_global, predictions_local
-            else:
-                return None, predictions_global, None
+            return None, predictions_global, None
