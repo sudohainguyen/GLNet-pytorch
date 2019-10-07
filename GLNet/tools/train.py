@@ -13,13 +13,18 @@ from GLNet.dataset.deep_globe import DeepGlobe, classToRGB, is_image_file
 from GLNet.utils.loss import FocalLoss
 from GLNet.utils.lovasz_losses import lovasz_softmax
 from GLNet.utils.lr_scheduler import LR_Scheduler
-from GLNet.helper import (
+from GLNet.helpers import (
     create_model_load_weights,
     get_optimizer,
     Trainer,
     Evaluator,
     collate
 )
+# from GLNet.helper import (
+#     get_optimizer,
+#     Trainer,
+#     Evaluator
+# )
 from GLNet.options import TrainingOptions
 from GLNet.utils import PhaseMode
 
@@ -98,7 +103,7 @@ def main():
     scheduler = LR_Scheduler("poly", learning_rate, num_epochs, len(dataloader_train))
     focalloss = FocalLoss(gamma=3)
     criterion = lambda x, y: 0.5 * focalloss(x, y) + 0.5 * lovasz_softmax(x, y)
-    
+
     writer = SummaryWriter(log_dir=args.log_path + args.task_name)
     f_log = open(args.log_path + args.task_name + ".log", "w")
 
@@ -176,7 +181,7 @@ def main():
                     # Only save best model which have highest validation accuracy
                     if val_acc > best_pred:
                         best_pred = val_acc
-                        torch.save(model.state_dict(), "./saved_models/" + args.task_name + ".pth")
+                        torch.save(model.state_dict(), os.path.join(model_path, f"{args.task_name}.pth"))
 
                     images = sample_batched["image"]
                     labels = sample_batched["label"]  # PIL images
