@@ -4,7 +4,7 @@ import numpy as np
 
 __all__ = ['concatenate', 'upsample_add']
 
-kwargs = {"mode": "bilinear"}
+kwargs = {"mode": "bilinear", "align_corners": True}
 
 def concatenate(p5, p4, p3, p2):
     _, _, H, W = p2.size()

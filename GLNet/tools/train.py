@@ -10,6 +10,7 @@ if __name__ == "__main__" and __package__ is None:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from GLNet.dataset.deep_globe import DeepGlobe, classToRGB, is_image_file
+from GLNet.dataset.paip import Paip
 from GLNet.utils.loss import FocalLoss
 from GLNet.utils.lovasz_losses import lovasz_softmax
 from GLNet.utils.lr_scheduler import LR_Scheduler
