@@ -38,8 +38,6 @@ def RGB_mapping_to_class(label):
     classmap[indices[0].tolist(), indices[1].tolist()] = 6
     indices = np.where(np.all(label == (0, 0, 0), axis=-1))
     classmap[indices[0].tolist(), indices[1].tolist()] = 0
-    #     plt.imshow(colmap)
-    #     plt.show()
     return classmap
 
 
@@ -61,8 +59,6 @@ def classToRGB(label):
     indices = np.where(label == 0)
     colmap[indices[0].tolist(), indices[1].tolist(), :] = [0, 0, 0]
     transform = ToTensor()
-    #     plt.imshow(colmap)
-    #     plt.show()
     return transform(colmap)
 
 
