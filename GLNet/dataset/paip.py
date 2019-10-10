@@ -15,6 +15,17 @@ def is_image_file(filename):
     return any(filename.endswith(extension) for extension in [".png", ".jpg", ".jpeg", ".tif"])
 
 
+def class_to_RGB(label):
+    l, w = label.shape[0], label.shape[1]
+    colmap = np.zeros(shape=(l, w, 3)).astype(np.float32)
+    
+    indices = np.where(label == 1)
+    colmap[indices[0].tolist(), indices[1].tolist(), :] = [255, 255, 255]
+
+    colmap = colmap.transpose(1, 2, 0)
+    return transforms.ToTensor()(colmap)
+
+
 def _transform(image, label):
     if np.random.random() > 0.5:
         image = transforms.functional.hflip(image)

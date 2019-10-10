@@ -9,7 +9,7 @@ from tensorboardX import SummaryWriter
 if __name__ == "__main__" and __package__ is None:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from GLNet.dataset.paip import Paip, is_image_file
+from GLNet.dataset.paip import Paip, is_image_file, class_to_RGB
 # from GLNet.dataset.deep_globe import DeepGlobe, classToRGB, is_image_file
 from GLNet.utils.loss import FocalLoss
 from GLNet.utils.lovasz_losses import lovasz_softmax
@@ -25,6 +25,64 @@ from GLNet.options import TrainingOptions
 from GLNet.utils import PhaseMode
 
 torch.backends.cudnn.deterministic = True
+
+
+def gen_logs(mode, train_scores, val_scores, epoch, num_epochs):
+    score_train, score_train_global, score_train_local = train_scores
+    score_val, score_val_global, score_val_local = val_scores
+    log = "================================\n"
+    if mode is PhaseMode.GlobalOnly:
+        log = (
+            log
+            + "epoch [{}/{}] Global -- IoU: train = {:.4f}, val = {:.4f}\n".format(
+                epoch + 1,
+                num_epochs,
+                np.mean(np.nan_to_num(score_train_global["iou"][1:])),
+                np.mean(np.nan_to_num(score_val_global["iou"][1:]))
+            )
+        )
+        log += "Confusion Matrix:\n"
+        log = log + f"Global train: {score_train_global['iou']}\n"
+    else:
+        log = (
+            log
+            + "epoch [{}/{}] IoU: train = {:.4f}, val = {:.4f}\n".format(
+                epoch + 1,
+                num_epochs,
+                np.mean(np.nan_to_num(score_train["iou"][1:])),
+                np.mean(np.nan_to_num(score_val["iou"][1:])),
+            )
+        )
+        log = (
+            log
+            + "epoch [{}/{}] Local  -- IoU: train = {:.4f}, val = {:.4f}\n".format(
+                epoch + 1,
+                num_epochs,
+                np.mean(np.nan_to_num(score_train_local["iou"][1:])),
+                np.mean(np.nan_to_num(score_val_local["iou"][1:])),
+            )
+        )
+        log = (
+            log
+            + "epoch [{}/{}] Global -- IoU: train = {:.4f}, val = {:.4f}\n".format(
+                epoch + 1,
+                num_epochs,
+                np.mean(np.nan_to_num(score_train_global["iou"][1:])),
+                np.mean(np.nan_to_num(score_val_global["iou"][1:]))
+            )
+        )
+        log += "Confusion Matrix:\n"
+        log = log + f"Train: {score_train['iou']}\n"
+        log = log + f"Local train: {score_train_local['iou']}\n"
+        log = log + f"Global train: {score_train_global['iou']}\n"
+        # if args.validation:
+        log = log + f"Val: {score_val['iou']}\n"
+        log = log + f"Local val: {score_val_local['iou']}\n"
+        log = log + f"Global val: {score_val_global['iou']}\n"
+
+    log += "================================\n"
+    return log
+
 
 def main():
     args = TrainingOptions().parse()
@@ -103,8 +161,8 @@ def main():
     # criterion = focalloss
     criterion = lambda x, y: 0.5 * focalloss(x, y) + 0.5 * lovasz_softmax(x, y)
 
-    writer = SummaryWriter(log_dir=args.log_path + args.task_name)
-    f_log = open(args.log_path + args.task_name + ".log", "w")
+    writer = SummaryWriter(log_dir=os.path.join(args.log_path, args.task_name))
+    f_log = open(os.path.join(args.log_path, args.task_name + ".log"), "w")
 
     trainer = Trainer(
         criterion, optimizer, n_class,
@@ -151,7 +209,6 @@ def main():
         trainer.reset_metrics()
 
         if epoch % args.validation_steps == 0:
-            # if args.validation:
             with torch.no_grad():
                 model.eval()
                 print("Validating...")
@@ -164,95 +221,71 @@ def main():
                     )
                     score_val, score_val_global, score_val_local = evaluator.get_scores()
 
-                    val_acc = 0.0
                     if mode is PhaseMode.GlobalOnly:
                         tbar.set_description(
                             "global mIoU: %.3f"
                             % (np.mean(np.nan_to_num(score_val_global["iou"][1:])))
                         )
-                        val_acc = np.mean(np.nan_to_num(score_val_global["iou"][1:]))
                     else:
                         tbar.set_description(
                             "agg mIoU: %.3f" % (np.mean(np.nan_to_num(score_val["iou"][1:])))
                         )
-                        val_acc = np.mean(np.nan_to_num(score_val["iou"][1:]))
 
-                    # Only save best model which have highest validation accuracy
-                    if val_acc > best_pred:
-                        best_pred = val_acc
-                        torch.save(model.state_dict(), os.path.join(model_path, f"{args.task_name}.pth"))
+                    images = sample_batched["image"]
+                    labels = sample_batched["label"]  # PIL images
 
-                    # images = sample_batched["image"]
-                    # labels = sample_batched["label"]  # PIL images
+                    if i_batch * batch_size + len(images) > (epoch % len(dataloader_val)) \
+                        and i_batch * batch_size <= (epoch % len(dataloader_val)):
+                        index = (epoch % len(dataloader_val)) - i_batch * batch_size
 
-                    # if i_batch * batch_size + len(images) > (epoch % len(dataloader_val)) \
-                    #     and i_batch * batch_size <= (epoch % len(dataloader_val)):
+                        writer.add_image(
+                            "image",
+                            images[index],
+                            epoch,
+                        )
+                        writer.add_image(
+                            "mask",
+                            class_to_RGB(labels[index]),
+                            epoch,
+                        )
+                        writer.add_image(
+                            "prediction_global",
+                            class_to_RGB(predictions_global[index]),
+                            epoch,
+                        )
 
-                    #     writer.add_image(
-                    #         "image",
-                    #         transforms.ToTensor()(images[(epoch % len(dataloader_val)) - i_batch * batch_size]),
-                    #         epoch,
-                    #     )
-                    #     writer.add_image(
-                    #         "mask",
-                    #         classToRGB(np.array(labels[(epoch % len(dataloader_val)) - i_batch * batch_size])) * 255.0,
-                    #         epoch,
-                    #     )
-                    #     writer.add_image(
-                    #         "prediction_global",
-                    #         classToRGB(predictions_global[(epoch % len(dataloader_val)) - i_batch * batch_size]) * 255.0,
-                    #         epoch,
-                    #     )
+                        if mode is PhaseMode.LocalFromGlobal or mode is PhaseMode.GlobalFromLocal:
+                            writer.add_image(
+                                "prediction_local",
+                                class_to_RGB(predictions_local[index]),
+                                epoch,
+                            )
+                            writer.add_image(
+                                "prediction",
+                                class_to_RGB(predictions[index]),
+                                epoch,
+                            )
+                score_val, score_val_global, score_val_local = evaluator.get_scores()
+                evaluator.reset_metrics()
 
-                    #     if mode is PhaseMode.LocalFromGlobal or mode is PhaseMode.GlobalFromLocal:
-                    #         writer.add_image(
-                    #             "prediction_local",
-                    #             classToRGB(predictions_local[(epoch % len(dataloader_val)) - i_batch * batch_size]) * 255.0,
-                    #             epoch,
-                    #         )
-                    #         writer.add_image(
-                    #             "prediction",
-                    #             classToRGB(predictions[(epoch % len(dataloader_val)) - i_batch * batch_size]) * 255.0,
-                    #             epoch,
-                    #         )
+                # Only save best model which have highest validation accuracy
+                if mode is PhaseMode.GlobalOnly:
+                    val_acc = np.mean(np.nan_to_num(score_val_global["iou"][1:]))
+                else:
+                    val_acc = np.mean(np.nan_to_num(score_val))
 
-                log = (
-                    "epoch [{}/{}] IoU: train = {:.4f}, val = {:.4f}\n".format(
-                        epoch + 1,
-                        num_epochs,
-                        np.mean(np.nan_to_num(score_train["iou"][1:])),
-                        np.mean(np.nan_to_num(score_val["iou"][1:])),
-                    )
+                if val_acc > best_pred:
+                    best_pred = val_acc
+                    torch.save(model.state_dict(), os.path.join(model_path, f"{args.task_name}.pth"))
+
+                log = gen_logs(
+                    mode=mode,
+                    train_scores=(score_train, score_train_global, score_train_local),
+                    val_scores=(score_val, score_val_global, score_val_local),
+                    epoch=epoch,
+                    num_epochs=num_epochs
                 )
-                log = (
-                    log
-                    + "epoch [{}/{}] Local  -- IoU: train = {:.4f}, val = {:.4f}\n".format(
-                        epoch + 1,
-                        num_epochs,
-                        np.mean(np.nan_to_num(score_train_local["iou"][1:])),
-                        np.mean(np.nan_to_num(score_val_local["iou"][1:])),
-                    )
-                )
-                log = (
-                    log
-                    + "epoch [{}/{}] Global -- IoU: train = {:.4f}, val = {:.4f}\n".format(
-                        epoch + 1,
-                        num_epochs,
-                        np.mean(np.nan_to_num(score_train_global["iou"][1:])),
-                        np.mean(np.nan_to_num(score_val_global["iou"][1:]))
-                    )
-                )
-
-                log = log + f"Train: {score_train['iou']}\n"
-                log = log + f"Local train: {score_train_local['iou']}\n"
-                log = log + f"Global train: {score_train_global['iou']}\n"
-                # if args.validation:
-                log = log + f"Val: {score_val['iou']}\n"
-                log = log + f"Local val: {score_val_local['iou']}\n"
-                log = log + f"Global val: {score_val_global['iou']}\n"
-
                 
-                log += "================================\n"
                 print(log)
                 f_log.write(log)
                 f_log.flush()
