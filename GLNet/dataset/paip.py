@@ -4,6 +4,7 @@ import random
 import numpy as np
 from PIL import Image, ImageFile
 
+import torch
 from torch.utils import data
 from torchvision import transforms
 from skimage import io
@@ -16,14 +17,9 @@ def is_image_file(filename):
 
 
 def class_to_RGB(label):
-    l, w = label.shape[0], label.shape[1]
-    colmap = np.zeros(shape=(l, w, 3)).astype(np.float32)
-    
-    indices = np.where(label == 1)
-    colmap[indices[0].tolist(), indices[1].tolist(), :] = [255, 255, 255]
-
-    colmap = colmap.transpose(1, 2, 0)
-    return transforms.ToTensor()(colmap)
+    colmap = np.array([np.array(label)] * 3)
+    colmap *= 255
+    return torch.as_tensor(colmap, dtype=torch.uint8)
 
 
 def _transform(image, label):

@@ -240,7 +240,7 @@ def main():
 
                         writer.add_image(
                             "image",
-                            images[index],
+                            np.array(images[index], dtype=np.uint8).transpose(2, 0, 1),
                             epoch,
                         )
                         writer.add_image(
