@@ -2,14 +2,18 @@ import os
 
 import random
 import numpy as np
-import cv2
 from PIL import Image, ImageFile
 
 from torch.utils import data
 from torchvision import transforms
+from skimage import io
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 
 def is_image_file(filename):
-    return any(filename.endswith(extension) for extension in [".png", ".jpg", ".jpeg"])
+    return any(filename.endswith(extension) for extension in [".png", ".jpg", ".jpeg", ".tif"])
+
 
 def _transform(image, label):
     if np.random.random() > 0.5:
@@ -22,16 +26,18 @@ def _transform(image, label):
         label = transforms.functional.rotate(label, degree)
     return image, label
 
+
 def add_extra_pixels(image, expected_shape=(2048, 2048), is_mask=False):
-    org = np.array(image)
     if is_mask:
-        temp = np.zeros(expected_shape, dtype=np.int32)
+        temp = np.zeros(expected_shape, dtype=np.uint8)
     else:
-        temp = np.zeros((expected_shape[0], expected_shape[1], 3), dtype=np.int32)
+        image = np.array(image)
+        temp = np.zeros((expected_shape[0], expected_shape[1], 3), dtype=np.uint8)
         temp += 243
     
-    temp[:org.shape[0], :org.shape[1]] = temp
+    temp[:image.shape[0], :image.shape[1]] = image
     return Image.fromarray(temp)
+
 
 class Paip(data.Dataset):
 
@@ -53,22 +59,20 @@ class Paip(data.Dataset):
         sample = {'id': self.ids[index][:14]}
         image = Image.open(os.path.join(self.root, 'images', self.ids[index]))
 
-        sample['image'] = image
+        # handle edge patches
+        if image.size != self.img_shape:
+            image = add_extra_pixels(image, expected_shape=self.img_shape)
 
         if self.label:
-            label = Image.open(os.path.join(self.root, 'masks', self.ids[index].replace('.jpg', '_mask.png')))
-            sample['label'] = label
-
-        # handle edge patches
-        if sample['image'].size != self.img_shape:
-            sample['image'] = add_extra_pixels(image, expected_shape=self.img_shape)
-            sample['label'] = add_extra_pixels(sample['label'], expected_shape=self.img_shape, is_mask=True)
+            label = io.imread(os.path.join(self.root, 'masks', self.ids[index].replace('.jpg', '_mask.tif')))
+            if label.size != self.img_shape:
+                label = add_extra_pixels(label, expected_shape=self.img_shape, is_mask=True)
 
         if self.transform and self.label:
             image, label = _transform(image, label)
-            sample['image'] = image
-            sample['label'] = label
 
+        sample['image'] = image
+        sample['label'] = label
         return sample
 
     def __len__(self):

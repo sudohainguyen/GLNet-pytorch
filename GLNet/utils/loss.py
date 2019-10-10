@@ -2,19 +2,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
-def one_hot(index, classes):
+def one_hot(target, classes):
     # index is not flattened (pypass ignore) ############
     # size = index.size()[:1] + (classes,) + index.size()[1:]
     # view = index.size()[:1] + (1,) + index.size()[1:]
-    #####################################################
     # index is flatten (during ignore) ##################
-    size = index.size()[:1] + (classes,)
-    view = index.size()[:1] + (1,)
-    #####################################################
+    size = target.size()[:1] + (classes,)
+    view = target.size()[:1] + (1,)
 
     # mask = torch.Tensor(size).fill_(0).to(device)
-    mask = torch.Tensor(size).fill_(0).cuda()
-    index = index.view(view)
+    mask = torch.zeros(size).cuda()
+    index = target.view(view)
     ones = 1.0
 
     return mask.scatter_(1, index, ones)
@@ -33,9 +31,9 @@ class FocalLoss(nn.Module):
         """
         only support ignore at 0
         """
-        _, C, _, _ = input.size()
+        classes = input.size(1)
         input = (
-            input.permute(0, 2, 3, 1).contiguous().view(-1, C)
+            input.permute(0, 2, 3, 1).contiguous().view(-1, classes)
         )  # B * H * W, C = P, C
         target = target.view(-1)
         if self.ignore is not None:
@@ -44,18 +42,13 @@ class FocalLoss(nn.Module):
             target = target[valid]
 
         if self.one_hot:
-            target = one_hot(target, input.size(1))
+            target = one_hot(target, classes)
         probs = F.softmax(input, dim=1)
         probs = (probs * target).sum(1)
         probs = probs.clamp(self.eps, 1.0 - self.eps)
 
         log_p = probs.log()
-        # print('probs size= {}'.format(probs.size()))
-        # print(probs)
-
         batch_loss = -(torch.pow((1 - probs), self.gamma)) * log_p
-        # print('-----bacth_loss------')
-        # print(batch_loss)
 
         if self.size_average:
             return batch_loss.mean()

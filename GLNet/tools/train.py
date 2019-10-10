@@ -9,8 +9,8 @@ from tensorboardX import SummaryWriter
 if __name__ == "__main__" and __package__ is None:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from GLNet.dataset.deep_globe import DeepGlobe, classToRGB, is_image_file
-from GLNet.dataset.paip import Paip
+from GLNet.dataset.paip import Paip, is_image_file
+# from GLNet.dataset.deep_globe import DeepGlobe, classToRGB, is_image_file
 from GLNet.utils.loss import FocalLoss
 from GLNet.utils.lovasz_losses import lovasz_softmax
 from GLNet.utils.lr_scheduler import LR_Scheduler
@@ -21,11 +21,6 @@ from GLNet.helpers import (
     Evaluator,
     collate
 )
-# from GLNet.helper import (
-#     get_optimizer,
-#     Trainer,
-#     Evaluator
-# )
 from GLNet.options import TrainingOptions
 from GLNet.utils import PhaseMode
 
@@ -66,20 +61,22 @@ def main():
         if is_image_file(image_name)
     ]
 
-    dataset_train = DeepGlobe(os.path.join(data_path, "train"), ids_train, label=True, transform=True)
+    dataset_train = Paip(os.path.join(data_path, "train"), ids_train, label=True, img_shape=4096, transform=True)
+    # dataset_train = DeepGlobe(os.path.join(data_path, "train"), ids_train, label=True, transform=True)
     dataloader_train = torch.utils.data.DataLoader(
         dataset=dataset_train,
-        batch_size=args.batch_size,
+        batch_size=batch_size,
         num_workers=args.num_workers,
         collate_fn=collate,
         shuffle=True,
         pin_memory=True,
     )
 
-    dataset_val = DeepGlobe(os.path.join(data_path, "val"), ids_val, label=True)
+    dataset_val = Paip(os.path.join(data_path, "val"), ids_val, label=True, img_shape=4096)
+    # dataset_val = DeepGlobe(os.path.join(data_path, "train"), ids_val, label=True)
     dataloader_val = torch.utils.data.DataLoader(
         dataset=dataset_val,
-        batch_size=args.batch_size,
+        batch_size=batch_size,
         num_workers=args.num_workers,
         collate_fn=collate,
         shuffle=False,
@@ -103,6 +100,7 @@ def main():
     optimizer = get_optimizer(model, mode, learning_rate=learning_rate)
     scheduler = LR_Scheduler("poly", learning_rate, num_epochs, len(dataloader_train))
     focalloss = FocalLoss(gamma=3)
+    # criterion = focalloss
     criterion = lambda x, y: 0.5 * focalloss(x, y) + 0.5 * lovasz_softmax(x, y)
 
     writer = SummaryWriter(log_dir=args.log_path + args.task_name)
@@ -137,7 +135,7 @@ def main():
                     "Train loss: %.3f; global mIoU: %.3f"
                     % (
                         cur_loss,
-                        np.mean(np.nan_to_num(score_train_global["iou"]))
+                        np.mean(np.nan_to_num(score_train_global["iou"][1:]))
                     )
                 )
             else:
@@ -145,7 +143,7 @@ def main():
                     "Train loss: %.3f; agg mIoU: %.3f"
                     % (
                         cur_loss,
-                        np.mean(np.nan_to_num(score_train["iou"]))
+                        np.mean(np.nan_to_num(score_train["iou"][1:]))
                     )
                 )
 
@@ -170,60 +168,60 @@ def main():
                     if mode is PhaseMode.GlobalOnly:
                         tbar.set_description(
                             "global mIoU: %.3f"
-                            % (np.mean(np.nan_to_num(score_val_global["iou"])))
+                            % (np.mean(np.nan_to_num(score_val_global["iou"][1:])))
                         )
-                        val_acc = np.mean(np.nan_to_num(score_val_global["iou"]))
+                        val_acc = np.mean(np.nan_to_num(score_val_global["iou"][1:]))
                     else:
                         tbar.set_description(
-                            "agg mIoU: %.3f" % (np.mean(np.nan_to_num(score_val["iou"])))
+                            "agg mIoU: %.3f" % (np.mean(np.nan_to_num(score_val["iou"][1:])))
                         )
-                        val_acc = np.mean(np.nan_to_num(score_val["iou"]))
+                        val_acc = np.mean(np.nan_to_num(score_val["iou"][1:]))
 
                     # Only save best model which have highest validation accuracy
                     if val_acc > best_pred:
                         best_pred = val_acc
                         torch.save(model.state_dict(), os.path.join(model_path, f"{args.task_name}.pth"))
 
-                    images = sample_batched["image"]
-                    labels = sample_batched["label"]  # PIL images
+                    # images = sample_batched["image"]
+                    # labels = sample_batched["label"]  # PIL images
 
-                    if i_batch * batch_size + len(images) > (epoch % len(dataloader_val)) \
-                        and i_batch * batch_size <= (epoch % len(dataloader_val)):
+                    # if i_batch * batch_size + len(images) > (epoch % len(dataloader_val)) \
+                    #     and i_batch * batch_size <= (epoch % len(dataloader_val)):
 
-                        writer.add_image(
-                            "image",
-                            transforms.ToTensor()(images[(epoch % len(dataloader_val)) - i_batch * batch_size]),
-                            epoch,
-                        )
-                        writer.add_image(
-                            "mask",
-                            classToRGB(np.array(labels[(epoch % len(dataloader_val)) - i_batch * batch_size])) * 255.0,
-                            epoch,
-                        )
-                        writer.add_image(
-                            "prediction_global",
-                            classToRGB(predictions_global[(epoch % len(dataloader_val)) - i_batch * batch_size]) * 255.0,
-                            epoch,
-                        )
+                    #     writer.add_image(
+                    #         "image",
+                    #         transforms.ToTensor()(images[(epoch % len(dataloader_val)) - i_batch * batch_size]),
+                    #         epoch,
+                    #     )
+                    #     writer.add_image(
+                    #         "mask",
+                    #         classToRGB(np.array(labels[(epoch % len(dataloader_val)) - i_batch * batch_size])) * 255.0,
+                    #         epoch,
+                    #     )
+                    #     writer.add_image(
+                    #         "prediction_global",
+                    #         classToRGB(predictions_global[(epoch % len(dataloader_val)) - i_batch * batch_size]) * 255.0,
+                    #         epoch,
+                    #     )
 
-                        if mode is PhaseMode.LocalFromGlobal or mode is PhaseMode.GlobalFromLocal:
-                            writer.add_image(
-                                "prediction_local",
-                                classToRGB(predictions_local[(epoch % len(dataloader_val)) - i_batch * batch_size]) * 255.0,
-                                epoch,
-                            )
-                            writer.add_image(
-                                "prediction",
-                                classToRGB(predictions[(epoch % len(dataloader_val)) - i_batch * batch_size]) * 255.0,
-                                epoch,
-                            )
+                    #     if mode is PhaseMode.LocalFromGlobal or mode is PhaseMode.GlobalFromLocal:
+                    #         writer.add_image(
+                    #             "prediction_local",
+                    #             classToRGB(predictions_local[(epoch % len(dataloader_val)) - i_batch * batch_size]) * 255.0,
+                    #             epoch,
+                    #         )
+                    #         writer.add_image(
+                    #             "prediction",
+                    #             classToRGB(predictions[(epoch % len(dataloader_val)) - i_batch * batch_size]) * 255.0,
+                    #             epoch,
+                    #         )
 
                 log = (
                     "epoch [{}/{}] IoU: train = {:.4f}, val = {:.4f}\n".format(
                         epoch + 1,
                         num_epochs,
-                        np.mean(np.nan_to_num(score_train["iou"])),
-                        np.mean(np.nan_to_num(score_val["iou"])),
+                        np.mean(np.nan_to_num(score_train["iou"][1:])),
+                        np.mean(np.nan_to_num(score_val["iou"][1:])),
                     )
                 )
                 log = (
@@ -231,8 +229,8 @@ def main():
                     + "epoch [{}/{}] Local  -- IoU: train = {:.4f}, val = {:.4f}\n".format(
                         epoch + 1,
                         num_epochs,
-                        np.mean(np.nan_to_num(score_train_local["iou"])),
-                        np.mean(np.nan_to_num(score_val_local["iou"])),
+                        np.mean(np.nan_to_num(score_train_local["iou"][1:])),
+                        np.mean(np.nan_to_num(score_val_local["iou"][1:])),
                     )
                 )
                 log = (
@@ -240,8 +238,8 @@ def main():
                     + "epoch [{}/{}] Global -- IoU: train = {:.4f}, val = {:.4f}\n".format(
                         epoch + 1,
                         num_epochs,
-                        np.mean(np.nan_to_num(score_train_global["iou"])),
-                        np.mean(np.nan_to_num(score_val_global["iou"]))
+                        np.mean(np.nan_to_num(score_train_global["iou"][1:])),
+                        np.mean(np.nan_to_num(score_val_global["iou"][1:]))
                     )
                 )
 
@@ -258,7 +256,7 @@ def main():
                 print(log)
                 f_log.write(log)
                 f_log.flush()
-                f_log.close()
+    f_log.close()
 
     
 if __name__ == "__main__":

@@ -37,7 +37,7 @@ def images_transform(images):
     return inputs
 
 def _mask_transform(mask):
-    target = np.array(mask).astype("int32")
+    target = np.array(mask).astype(np.uint8)
     # target[target == 255] = -1
     # target[target == 0] = -1
     # target -= 1 # in DeepGlobe: make class 0 (should be ignored) as -1 (to be ignored in cross_entropy)
