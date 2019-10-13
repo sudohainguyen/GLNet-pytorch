@@ -63,7 +63,7 @@ class Paip(data.Dataset):
         # self.resizer = transforms.Resize((4096, 4096))
 
     def __getitem__(self, index):
-        sample = {'id': self.ids[index][:14]}
+        sample = {'id': self.ids[index][:-4]}
         image = Image.open(os.path.join(self.root, 'images', self.ids[index]))
 
         # handle edge patches

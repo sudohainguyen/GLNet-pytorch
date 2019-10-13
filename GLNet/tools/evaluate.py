@@ -14,7 +14,7 @@ from GLNet.dataset.paip import Paip, is_image_file, class_to_RGB
 from GLNet.helpers import (
     create_model_load_weights,
     Evaluator,
-    collate_test
+    collate
 )
 from GLNet.options import TestingOptions
 from GLNet.utils import PhaseMode
@@ -71,7 +71,7 @@ def main():
         dataset=dataset_test,
         batch_size=batch_size,
         num_workers=args.num_workers,
-        collate_fn=collate_test,
+        collate_fn=collate,
         shuffle=False,
         pin_memory=True
     )
@@ -79,7 +79,7 @@ def main():
     model, global_fixed = create_model_load_weights(
         n_class, mode, evaluation=True, path_g=path_g, path_g2l=path_g2l, path_l2g=path_l2g
     )
-    evaluator = Evaluator(n_class, size_g, size_p, sub_batch_size, mode, True)
+    evaluator = Evaluator(n_class, size_g, size_p, sub_batch_size, mode, False)
 
     tbar = tqdm(dataloader_test)
 
@@ -108,23 +108,23 @@ def main():
             for i in range(len(images)):
                 if mode is PhaseMode.GlobalOnly:
                     image = Image.fromarray(
-                        np.array(predictions_global[i] * 255, dtype=np.uint32)
+                        np.array(predictions_global[i], dtype=np.uint8) * 255
                     )
                 else:
                     image = Image.fromarray(
-                        np.array(predictions[i] * 255, dtype=np.uint32)
+                        np.array(predictions[i], dtype=np.uint8) * 255
                     )
-                Image.fromarray(np.array(labels[i] * 255, dtype=np.uint8))\
+                Image.fromarray(np.array(labels[i], dtype=np.uint8) * 255)\
                     .save(os.path.join(save_predictions, f"{sample_batched['id'][i]}_mask.png"))
                 image.save(os.path.join(save_predictions, f"{sample_batched['id'][i]}_pred.png"))
         
-        test_scores = evaluator.get_scores()
-        evaluator.reset_metrics()
+    test_scores = evaluator.get_scores()
+    evaluator.reset_metrics()
 
-        log = gen_logs(mode, test_scores)
-        print(log)
-        f_log.write(log)
-        f_log.flush()
+    log = gen_logs(mode, test_scores)
+    print(log)
+    f_log.write(log)
+    f_log.flush()
     f_log.close()
 
 

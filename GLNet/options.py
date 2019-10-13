@@ -111,7 +111,12 @@ class BaseOptions:
             type=str,
             default='resnet50',
             help='Backbone model used by FPN.')
-        
+        parser.add_argument(
+            "--log_path",
+            type=str,
+            default="./logs",
+            help="path to store tensorboard log files, no need to include task specific name",
+        )
         self.parser = parser
 
     def parse(self):
@@ -131,12 +136,6 @@ class TrainingOptions(BaseOptions):
     def __init__(self):
         super(TrainingOptions, self).__init__("Training GLNet semantic segmenation")
 
-        self.parser.add_argument(
-            "--log_path",
-            type=str,
-            default="./logs",
-            help="path to store tensorboard log files, no need to include task specific name",
-        )
         self.parser.add_argument(
             "--validation-steps",
             type=int,

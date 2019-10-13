@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from ..functional import upsample_add, concatenate
+from ..functional import upsample_add, concatenate, kwargs
 
 class FPN_Global(nn.Module):
     def __init__(self, num_class):
@@ -155,33 +155,33 @@ class FPN_Local(nn.Module):
         # Top-down
         p5 = self.toplayer(
             torch.cat(
-                [c5] + [F.interpolate(c5_ext[0], size=c5.size()[2:], **self._up_kwargs)],
-                dim=1,
+                [c5] + [F.interpolate(c5_ext[0], size=c5.size()[2:], **kwargs)],
+                dim=1
             )
         )
-        p4 = self._upsample_add(
+        p4 = upsample_add(
             p5,
             self.latlayer1(
                 torch.cat(
-                    [c4] + [F.interpolate(c4_ext[0], size=c4.size()[2:], **self._up_kwargs)],
+                    [c4] + [F.interpolate(c4_ext[0], size=c4.size()[2:], **kwargs)],
                     dim=1,
                 )
             ),
         )
-        p3 = self._upsample_add(
+        p3 = upsample_add(
             p4,
             self.latlayer2(
                 torch.cat(
-                    [c3] + [F.interpolate(c3_ext[0], size=c3.size()[2:], **self._up_kwargs)],
+                    [c3] + [F.interpolate(c3_ext[0], size=c3.size()[2:], **kwargs)],
                     dim=1,
                 )
             ),
         )
-        p2 = self._upsample_add(
+        p2 = upsample_add(
             p3,
             self.latlayer3(
                 torch.cat(
-                    [c2] + [F.interpolate(c2_ext[0], size=c2.size()[2:], **self._up_kwargs)],
+                    [c2] + [F.interpolate(c2_ext[0], size=c2.size()[2:], **kwargs)],
                     dim=1,
                 )
             ),
@@ -191,25 +191,25 @@ class FPN_Local(nn.Module):
         # Smooth
         p5 = self.smooth1_1(
             torch.cat(
-                [p5] + [F.interpolate(ps0_ext[0][0], size=p5.size()[2:], **self._up_kwargs)],
+                [p5] + [F.interpolate(ps0_ext[0][0], size=p5.size()[2:], **kwargs)],
                 dim=1,
             )
         )
         p4 = self.smooth2_1(
             torch.cat(
-                [p4] + [F.interpolate(ps0_ext[1][0], size=p4.size()[2:], **self._up_kwargs)],
+                [p4] + [F.interpolate(ps0_ext[1][0], size=p4.size()[2:], **kwargs)],
                 dim=1,
             )
         )
         p3 = self.smooth3_1(
             torch.cat(
-                [p3] + [F.interpolate(ps0_ext[2][0], size=p3.size()[2:], **self._up_kwargs)],
+                [p3] + [F.interpolate(ps0_ext[2][0], size=p3.size()[2:], **kwargs)],
                 dim=1,
             )
         )
         p2 = self.smooth4_1(
             torch.cat(
-                [p2] + [F.interpolate(ps0_ext[3][0], size=p2.size()[2:], **self._up_kwargs)],
+                [p2] + [F.interpolate(ps0_ext[3][0], size=p2.size()[2:], **kwargs)],
                 dim=1,
             )
         )
@@ -217,25 +217,25 @@ class FPN_Local(nn.Module):
 
         p5 = self.smooth1_2(
             torch.cat(
-                [p5] + [F.interpolate(ps1_ext[0][0], size=p5.size()[2:], **self._up_kwargs)],
+                [p5] + [F.interpolate(ps1_ext[0][0], size=p5.size()[2:], **kwargs)],
                 dim=1,
             )
         )
         p4 = self.smooth2_2(
             torch.cat(
-                [p4] + [F.interpolate(ps1_ext[1][0], size=p4.size()[2:], **self._up_kwargs)],
+                [p4] + [F.interpolate(ps1_ext[1][0], size=p4.size()[2:], **kwargs)],
                 dim=1,
             )
         )
         p3 = self.smooth3_2(
             torch.cat(
-                [p3] + [F.interpolate(ps1_ext[2][0], size=p3.size()[2:], **self._up_kwargs)],
+                [p3] + [F.interpolate(ps1_ext[2][0], size=p3.size()[2:], **kwargs)],
                 dim=1,
             )
         )
         p2 = self.smooth4_2(
             torch.cat(
-                [p2] + [F.interpolate(ps1_ext[3][0], size=p2.size()[2:], **self._up_kwargs)],
+                [p2] + [F.interpolate(ps1_ext[3][0], size=p2.size()[2:], **kwargs)],
                 dim=1,
             )
         )
@@ -243,21 +243,21 @@ class FPN_Local(nn.Module):
 
         # Classify
         # use ps2_ext
-        ps3 = self._concatenate(
+        ps3 = concatenate(
             torch.cat(
-                [p5] + [F.interpolate(ps2_ext[0][0], size=p5.size()[2:], **self._up_kwargs)],
+                [p5] + [F.interpolate(ps2_ext[0][0], size=p5.size()[2:], **kwargs)],
                 dim=1,
             ),
             torch.cat(
-                [p4] + [F.interpolate(ps2_ext[1][0], size=p4.size()[2:], **self._up_kwargs)],
+                [p4] + [F.interpolate(ps2_ext[1][0], size=p4.size()[2:], **kwargs)],
                 dim=1,
             ),
             torch.cat(
-                [p3] + [F.interpolate(ps2_ext[2][0], size=p3.size()[2:], **self._up_kwargs)],
+                [p3] + [F.interpolate(ps2_ext[2][0], size=p3.size()[2:], **kwargs)],
                 dim=1,
             ),
             torch.cat(
-                [p2] + [F.interpolate(ps2_ext[3][0], size=p2.size()[2:], **self._up_kwargs)],
+                [p2] + [F.interpolate(ps2_ext[3][0], size=p2.size()[2:], **kwargs)],
                 dim=1,
             ),
         )
