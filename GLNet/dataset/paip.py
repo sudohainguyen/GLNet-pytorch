@@ -9,6 +9,18 @@ from torch.utils import data
 from torchvision import transforms
 from skimage import io
 
+from ..utils.filters import (
+    filter_green_channel,
+    filter_red_pen,
+    filter_blue_pen,
+    filter_green_pen,
+    filter_remove_small_objects,
+    filter_grays,
+    mask_rgb,
+    add_extra_pixels,
+    _transform
+)
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
@@ -22,28 +34,47 @@ def class_to_RGB(label):
     return torch.as_tensor(colmap, dtype=torch.uint8)
 
 
-def _transform(image, label):
-    if np.random.random() > 0.5:
-        image = transforms.functional.hflip(image)
-        label = transforms.functional.hflip(label)
+def apply_filters(np_img):
+    """
+    Apply filters to image as NumPy array and optionally save and/or display filtered images.
+    Args:
+        np_img: Image as NumPy array.
+    Returns:
+        Resulting filtered image as a NumPy array.
+    """
+    rgb = np_img
 
-    if np.random.random() > 0.5:
-        degree = random.choice([90, 180, 270])
-        image = transforms.functional.rotate(image, degree)
-        label = transforms.functional.rotate(label, degree)
-    return image, label
+    mask_not_green = filter_green_channel(rgb)
+    # rgb_not_green = mask_rgb(rgb, mask_not_green)
 
+    mask_not_gray = filter_grays(rgb)
+    # rgb_not_gray = mask_rgb(rgb, mask_not_gray)
 
-def add_extra_pixels(image, expected_shape=(2048, 2048), is_mask=False):
-    if is_mask:
-        temp = np.zeros(expected_shape, dtype=np.uint8)
-    else:
-        image = np.array(image)
-        temp = np.zeros((expected_shape[0], expected_shape[1], 3), dtype=np.uint8)
-        temp += 243
-    
-    temp[:image.shape[0], :image.shape[1]] = image
-    return Image.fromarray(temp)
+    mask_no_red_pen = filter_red_pen(rgb)
+    # rgb_no_red_pen = mask_rgb(rgb, mask_no_red_pen)
+
+    mask_no_green_pen = filter_green_pen(rgb)
+    # rgb_no_green_pen = mask_rgb(rgb, mask_no_green_pen)
+
+    mask_no_blue_pen = filter_blue_pen(rgb)
+    # rgb_no_blue_pen = mask_rgb(rgb, mask_no_blue_pen)
+
+    mask_gray_green_pens = (
+        mask_not_gray
+        & mask_not_green
+        & mask_no_red_pen
+        & mask_no_green_pen
+        & mask_no_blue_pen
+    )
+    # rgb_gray_green_pens = mask_rgb(rgb, mask_gray_green_pens)
+
+    mask_remove_small = filter_remove_small_objects(
+        mask_gray_green_pens, min_size=500, output_type="bool"
+    )
+    rgb_remove_small = mask_rgb(rgb, mask_remove_small)
+
+    img = rgb_remove_small
+    return img
 
 
 class Paip(data.Dataset):
@@ -55,10 +86,6 @@ class Paip(data.Dataset):
         self.transform = transform
         self.ids = ids
         self.img_shape = (img_shape, img_shape)
-        # self.classdict = {
-        #     0: 'no',
-        #     1: 'yes'
-        # }
 
         # self.resizer = transforms.Resize((4096, 4096))
 
