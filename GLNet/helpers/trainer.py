@@ -70,10 +70,7 @@ class Trainer(object):
         labels_glb = masks_transform(labels_glb)  # 127 * 127 * 8 = 129032
 
         if self.mode is PhaseMode.LocalFromGlobal or self.mode is PhaseMode.GlobalFromLocal:
-            patches, coordinates, templates, sizes, ratios = global2patch(
-            # patches, coordinates, _, sizes, ratios = global2patch(
-                images, self.size_p
-            )
+            patches, coordinates, templates, sizes, ratios = global2patch(images, self.size_p)
             label_patches, _, _, _, _ = global2patch(labels, self.size_p)
             
             predicted_patches = [
@@ -95,15 +92,14 @@ class Trainer(object):
             outputs_global, _ = model.forward(images_glb, None, None, None)
             loss = self.criterion(outputs_global, labels_glb)
             loss.backward()
-            self.optimizer.step()
-            self.optimizer.zero_grad()
-            
+            # self.optimizer.step()
+            # self.optimizer.zero_grad()
+
 
         if self.mode is PhaseMode.LocalFromGlobal:
             # training with patches 
             for i in range(len(images)):
                 j = 0
-                # while j < self.n**2:
                 while j < len(coordinates[i]):
                     patches_var = images_transform(
                         patches[i][j : j + self.sub_batch_size]
@@ -150,8 +146,8 @@ class Trainer(object):
                 outputs_global[i] = output_global
             outputs_global = torch.cat(outputs_global, dim=0)
 
-            self.optimizer.step()
-            self.optimizer.zero_grad()
+            # self.optimizer.step()
+            # self.optimizer.zero_grad()
             
 
         if self.mode is PhaseMode.GlobalFromLocal:
@@ -232,8 +228,9 @@ class Trainer(object):
                         .numpy()
                     )
                     j += self.sub_batch_size
-            self.optimizer.step()
-            self.optimizer.zero_grad()
+        
+        self.optimizer.step()
+        self.optimizer.zero_grad()
 
         # global predictions 
         # predictions_global = F.interpolate(outputs_global.cpu(), self.size0, mode='nearest').argmax(1).detach().numpy()

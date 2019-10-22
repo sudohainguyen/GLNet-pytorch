@@ -4,10 +4,14 @@ from ..utils import PhaseMode
 from ..models import GLNet
 
 def create_model_load_weights(
-    n_class, mode=PhaseMode.GlobalOnly, evaluation=False, path_g=None, path_g2l=None, path_l2g=None
+    n_class,
+    mode=PhaseMode.GlobalOnly,
+    gpu_ids=[0],
+    evaluation=False,
+    path_g=None, path_g2l=None, path_l2g=None
 ):
     model = GLNet(n_class)
-    model = nn.DataParallel(model)
+    model = nn.DataParallel(model, device_ids=gpu_ids)
     model = model.cuda()
 
     if (mode is PhaseMode.LocalFromGlobal and not evaluation) or (mode is PhaseMode.GlobalOnly and evaluation):
@@ -39,7 +43,7 @@ def create_model_load_weights(
     if mode is PhaseMode.GlobalFromLocal:
         # load fixed basic global branch
         global_fixed = GLNet(n_class)
-        global_fixed = nn.DataParallel(global_fixed)
+        global_fixed = nn.DataParallel(global_fixed, device_ids=gpu_ids)
         global_fixed = global_fixed.cuda()
         partial = torch.load(path_g)
         state = global_fixed.state_dict()

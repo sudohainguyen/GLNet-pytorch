@@ -43,6 +43,7 @@ def gen_logs(mode, train_scores, val_scores, epoch, num_epochs):
         )
         log += "Confusion Matrix:\n"
         log = log + f"Global train: {score_train_global['iou']}\n"
+        log = log + f"Global val: {score_val_global['iou']}\n"
     else:
         log = (
             log
@@ -152,7 +153,8 @@ def main():
     path_g2l = os.path.join(model_path, args.path_g2l)
     path_l2g = os.path.join(model_path, args.path_l2g)
 
-    model, global_fixed = create_model_load_weights(n_class, mode, False, \
+    model, global_fixed = create_model_load_weights(n_class, mode,
+        evaluation=False, gpu_ids=args.gpu_ids,
         path_g=path_g, path_g2l=path_g2l, path_l2g=path_l2g)
 
     optimizer = get_optimizer(model, mode, learning_rate=learning_rate)
@@ -186,8 +188,10 @@ def main():
             loss = trainer.train(sample_batched, model, global_fixed)
             train_loss += loss.item()
             score_train, score_train_global, score_train_local = trainer.get_scores()
-            
+
+            _iter = batch_size * (epoch - 1) + (i_batch + 1)
             cur_loss = train_loss / (i_batch + 1)
+            writer.add_scalar('train_loss', cur_loss, _iter)
             if mode is PhaseMode.GlobalOnly:
                 tbar.set_description(
                     "Train loss: %.3f; global mIoU: %.3f"
@@ -265,15 +269,20 @@ def main():
                                 class_to_RGB(predictions[index]),
                                 epoch,
                             )
+
                 score_val, score_val_global, score_val_local = evaluator.get_scores()
                 evaluator.reset_metrics()
 
-                # Only save best model which have highest validation accuracy
                 if mode is PhaseMode.GlobalOnly:
                     val_acc = np.mean(np.nan_to_num(score_val_global["iou"][1:]))
+                    writer.add_scalar('train_acc_global', np.mean(np.nan_to_num(score_train_global["iou"][1:])), epoch)
+                    writer.add_scalar('val_acc_global', val_acc, epoch)
                 else:
-                    val_acc = np.mean(np.nan_to_num(score_val))
+                    val_acc = np.mean(np.nan_to_num(score_val["iou"][1:]))
+                    writer.add_scalar('train_acc', np.mean(np.nan_to_num(score_train["iou"][1:])), epoch)
+                    writer.add_scalar('val_acc', val_acc, epoch)
 
+                # Only save best model which have highest validation accuracy
                 if val_acc > best_pred:
                     best_pred = val_acc
                     torch.save(model.state_dict(), os.path.join(model_path, f"{args.task_name}.pth"))
@@ -285,7 +294,7 @@ def main():
                     epoch=epoch,
                     num_epochs=num_epochs
                 )
-                
+
                 print(log)
                 f_log.write(log)
                 f_log.flush()

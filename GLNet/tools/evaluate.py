@@ -27,13 +27,13 @@ def gen_logs(mode, test_scores):
 
     log = "================================\n"
     log += mode.name
-    log += "Confusion Matrix:\n"
+    log += "\nConfusion Matrix:\n"
     
-    log = log + f"Global score: {score_test_global['iou']}\n"
+    log = log + f"Global score: {score_test_global}\n"
     
     if mode is PhaseMode.LocalFromGlobal or mode is PhaseMode.GlobalFromLocal:
-        log += f"Local score: {score_test_local}"
-        log += f"Overall: {score_test}"
+        log += f"Local score: {score_test_local}\n"
+        log += f"Overall: {score_test}\n"
     return log
 
 
@@ -77,7 +77,10 @@ def main():
     )
 
     model, global_fixed = create_model_load_weights(
-        n_class, mode, evaluation=True, path_g=path_g, path_g2l=path_g2l, path_l2g=path_l2g
+        n_class, mode,
+        evaluation=True,
+        gpu_ids=args.gpu_ids,
+        path_g=path_g, path_g2l=path_g2l, path_l2g=path_l2g
     )
     evaluator = Evaluator(n_class, size_g, size_p, sub_batch_size, mode, False)
 
