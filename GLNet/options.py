@@ -8,22 +8,31 @@ import argparse
 import warnings
 from GLNet.utils import PhaseMode
 
-__all__ = ['TrainingOptions']
+# def _check_args(parsed_args):
+#     """ Function to check for inherent contradictions within parsed arguments.
+#     For example, batch_size < num_gpus
+#     Intended to raise errors prior to backend initialisation.
 
-def _check_args(parsed_args):
-    """ Function to check for inherent contradictions within parsed arguments.
-    For example, batch_size < num_gpus
-    Intended to raise errors prior to backend initialisation.
+#     Args
+#         parsed_args: parser.parse_args()
 
-    Args
-        parsed_args: parser.parse_args()
+#     Returns
+#         parsed_args
+#     """
+#     if 'resnet' not in parsed_args.backbone:
+#         warnings.warn('Using experimental backbone {}. Only resnet50 has been properly tested.'.format(parsed_args.backbone))
+    
+#     return parsed_args
 
-    Returns
-        parsed_args
-    """
-    if 'resnet' not in parsed_args.backbone:
-        warnings.warn('Using experimental backbone {}. Only resnet50 has been properly tested.'.format(parsed_args.backbone))
-    return parsed_args
+# def _check_args_training(parsed_args):
+#     if parsed_args.lr <= 0:
+#         raise ValueError('Learning rate must be greater than 0')
+#     if parsed_args.num_epochs <= 0:
+#         raise ValueError("Number of training epochs must be greater than 0")
+#     return parsed_args
+
+# def _check_args_evaluation(parse_args):
+#     return parse_args
 
 class BaseOptions:
     def __init__(self, description):
@@ -117,20 +126,32 @@ class BaseOptions:
             default="./logs",
             help="path to store tensorboard log files, no need to include task specific name",
         )
+        parser.add_argument(
+            '--gpu_ids',
+            type=str,
+            default='0',
+            help='use which gpu to train, must be a comma-separated list of integers only (default=0)'
+        )
         self.parser = parser
 
+    def _check_args(self):
+        if 'resnet' not in self.args.backbone:
+            warnings.warn('Using experimental backbone {}. Only resnet50 has been properly tested.'.format(self.args.backbone))
+    
+        return self.args
+
     def parse(self):
-        args = self.parser.parse_args()
+        self.args = self.parser.parse_args()
+        args = self.args
         # default settings for epochs and lr
-        if args.mode == 1 or args.mode == 3:
-            args.num_epochs = 120
-            args.lr = 5e-5
-        else:
-            args.num_epochs = 50
-            args.lr = 2e-5
+
+        try:
+            args.gpu_ids = [int(s) for s in args.gpu_ids.split(',')]
+        except ValueError:
+            raise ValueError('Argument --gpu_ids must be a comma-separated list of integers only')
         
         args.mode = PhaseMode.int_to_phasemode(args.mode)
-        return _check_args(args)
+        return self._check_args()
 
 class TrainingOptions(BaseOptions):
     def __init__(self):
@@ -143,11 +164,45 @@ class TrainingOptions(BaseOptions):
             help="Number of epoch that model will be validated"
         )
         self.parser.add_argument(
-            "--imagenet-weights",
+            "--from_scratch",
             action="store_true",
             default=False,
             help="Load backbones with pretrained weights on ImageNet"
         )
+        self.parser.add_argument(
+            '--lr',
+            type=float,
+            default=None,
+            help="Declare learning rate"
+        )
+        self.parser.add_argument(
+            "--num_epochs",
+            type=int,
+            default=30,
+            help="Declare number of training epochs"
+        )
+
+    def _check_args(self):
+        super(TrainingOptions, self)._check_args()
+        if self.args.lr <= 0:
+            raise ValueError('Learning rate must be greater than 0')
+        if self.args.num_epochs <= 0:
+            raise ValueError("Number of training epochs must be greater than 0")
+        return self.args
+
+
+    def parse(self):
+        args = super(TrainingOptions, self).parse()
+        if args.lr is None:
+            if args.mode == 1 or args.mode == 3:
+                args.num_epochs = 120
+                args.lr = 5e-5
+            else:
+                args.num_epochs = 50
+                args.lr = 2e-5
+
+        return self._check_args()
+
 
 class TestingOptions(BaseOptions):
     def __init__(self):
@@ -158,3 +213,7 @@ class TestingOptions(BaseOptions):
             default=None,
             help="Directory where predictions saved"
         )
+
+    def parse(self):
+        super(TestingOptions, self).parse()
+        return self._check_args()
