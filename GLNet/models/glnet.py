@@ -1,23 +1,36 @@
+import numpy as np
 from torch import nn
 from torch.nn import functional as F
 import torch
 
-from .backbones.resnet import resnet50
 from .extractors.fpn import FPN_Global, FPN_Local
 from .functional import crop_global, merge_local
 from ..utils import PhaseMode
+from .backbones import get_backbone
 
 class GLNet(nn.Module):
-    def __init__(self, num_class):
+    def __init__(self, num_class, 
+        backbone_g='resnet50', 
+        backbone_l='resnet50',
+        from_scratch=False,
+        args=None
+    ):
+        pretrained = not from_scratch
         super(GLNet, self).__init__()
 
-        self._up_kwargs = {"mode": "bilinear"}
-
-        self.backbone_global = resnet50(pretrained=True)
-        self.backbone_local = resnet50(pretrained=True)
+        self._up_kwargs = {"mode": "bilinear", "align_corners": True}
+        # self.size_g = (args.size_g, args.size_g)
+        # self.size_p = (args.size_p, args.size_p)
+        self.n_class = num_class
+        # self.backbone_global = resnet50(pretrained=pretrained)
+        self.backbone_global = get_backbone(bb_name=backbone_g, pretrained=pretrained)
+        # self.backbone_local = resnet50(pretrained=pretrained)
+        self.backbone_local = get_backbone(bb_name=backbone_l, pretrained=pretrained)
 
         self.fpn_global = FPN_Global(num_class)
         self.fpn_local = FPN_Local(num_class)
+
+        self.mse = nn.MSELoss()
 
         self.c2_g = None
         self.c3_g = None
@@ -180,9 +193,11 @@ class GLNet(nn.Module):
             if self.patch_n == 0:
                 self.c2_g, self.c3_g, self.c4_g, self.c5_g = \
                     global_model.module.backbone_global.forward(image_global)
+                    # self.backbone_global.forward(image_global)
 
                 self.output_g, self.ps0_g, self.ps1_g, self.ps2_g, self.ps3_g = \
-                    global_model.module.fpn_global.forward(self.c2_g, self.c3_g, self.c4_g, self.c5_g)
+                    global_model.module.fpn_global.forward((self.c2_g, self.c3_g, self.c4_g, self.c5_g))
+                    # self.fpn_global.forward((self.c2_g, self.c3_g, self.c4_g, self.c5_g))
 
                 # self.output_g = F.interpolate(self.output_g, image_global.size()[2:], mode='nearest')
             self.patch_n += patches.size()[0]
@@ -323,20 +338,20 @@ class GLNet(nn.Module):
                 self.patch_n += patches.size()[0]
                 self.patch_n %= n_patch
             
-            # local model
+                        # local model
             outputs = self.backbone_local.forward(patches)
             output_l, _, _, _, ps3_l = self.fpn_local.forward(
                 backbone_outputs=outputs,
                 additional_fms=(
-                    self._crop_global(self.c2_g, top_lefts, ratio),
-                    self._crop_global(self.c3_g, top_lefts, ratio),
-                    self._crop_global(self.c4_g, top_lefts, ratio),
-                    self._crop_global(self.c5_g, top_lefts, ratio)
+                    crop_global(self.c2_g, top_lefts, ratio),
+                    crop_global(self.c3_g, top_lefts, ratio),
+                    crop_global(self.c4_g, top_lefts, ratio),
+                    crop_global(self.c5_g, top_lefts, ratio)
                 ),
                 ps_exts=(
-                    [self._crop_global(f, top_lefts, ratio) for f in self.ps0_g],
-                    [self._crop_global(f, top_lefts, ratio) for f in self.ps1_g],
-                    [self._crop_global(f, top_lefts, ratio) for f in self.ps2_g]
+                    [crop_global(f, top_lefts, ratio) for f in self.ps0_g],
+                    [crop_global(f, top_lefts, ratio) for f in self.ps1_g],
+                    [crop_global(f, top_lefts, ratio) for f in self.ps2_g]
                 )
             )
 
@@ -345,7 +360,7 @@ class GLNet(nn.Module):
 
             output = self.ensemble(ps3_l, ps3_g2l)
             # output = F.interpolate(output, imsize, mode='nearest')
-            return output, self.output_g, output_l, nn.MSELoss(ps3_l, ps3_g2l)
+            return output, self.output_g, output_l, self.mse(ps3_l, ps3_g2l)
         if mode is PhaseMode.GlobalFromLocal:
             outputs = self.backbone_global.forward(image_global)
 
@@ -356,3 +371,15 @@ class GLNet(nn.Module):
             )
             self.clear_cache()
             return output_g, ps3_g
+
+    # def predict(self, images):
+    #     images_global = resize(images, self.size_g)
+    #     outputs_global = np.zeros((len(images), self.n_class, self.size_g[0] // 4, self.size_g[1] // 4))
+
+    #     scores_local = [
+    #         np.zeros((1, self.n_class, images[i].size[1], images[i].size[0]))
+    #         for i in range(len(images))
+    #     ]
+    #     scores = scores_local.copy()
+
+    #     images_glb = images
