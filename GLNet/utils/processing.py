@@ -1,9 +1,12 @@
+import cv2
+import numpy as np
+from PIL import Image
+
 import torch
 from torch.autograd import Variable
 from torchvision import transforms
-import numpy as np
-import cv2
-from PIL import Image
+
+from .filters import apply_filters
 
 normalize = transforms.Compose(
     [
@@ -12,6 +15,28 @@ normalize = transforms.Compose(
         transforms.Normalize([.485, .456, .406], [.229, .224, .225]),
     ]
 )
+
+
+def add_extra_pixels(image, expected_shape=(2048, 2048), is_mask=False):
+    if is_mask:
+        temp = np.zeros(expected_shape, dtype=np.uint8)
+    else:
+        image = np.array(image)
+        temp = np.zeros((expected_shape[0], expected_shape[1], 3), dtype=np.uint8)
+        temp += 243
+
+    temp[: image.shape[0], : image.shape[1]] = image
+    return Image.fromarray(temp)
+
+
+def experiment(image):
+    np_img = np.array(image)
+    gauss = cv2.GaussianBlur(np_img, (0,0), 30)
+    unsharp_image = cv2.addWeighted(np_img, 2, gauss, -1, 0)
+    
+    unsharp_image = apply_filters(unsharp_image)
+    return Image.fromarray(unsharp_image)
+
 
 def resize(images, shape, is_mask=False):
     """

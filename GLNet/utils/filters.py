@@ -12,18 +12,6 @@ from PIL import Image
 from torchvision import transforms
 
 
-def add_extra_pixels(image, expected_shape=(2048, 2048), is_mask=False):
-    if is_mask:
-        temp = np.zeros(expected_shape, dtype=np.uint8)
-    else:
-        image = np.array(image)
-        temp = np.zeros((expected_shape[0], expected_shape[1], 3), dtype=np.uint8)
-        temp += 243
-
-    temp[: image.shape[0], : image.shape[1]] = image
-    return Image.fromarray(temp)
-
-
 def rgb_to_grayscale(np_img):
     """
     Convert an RGB NumPy array to a grayscale NumPy array.
@@ -302,7 +290,7 @@ def filter_hed_to_eosin(np_img):
     return eosin
 
 
-def filter_binary_erosion(np_img, disk_size=5, iterations=1):
+def filter_binary_erosion(np_img, disk_size=5, iterations=1, output_type="bool"):
     """
     Erode a binary object (bool, float, or uint8).
     Args:
@@ -313,34 +301,43 @@ def filter_binary_erosion(np_img, disk_size=5, iterations=1):
     Returns:
         NumPy array (bool, float, or uint8) where edges have been eroded.
     """
-    if np_img.dtype == np.uint8:
+    if np_img.dtype == "uint8":
         np_img = np_img / 255
     result = sc_morph.binary_erosion(
         np_img, sk_morphology.disk(disk_size), iterations=iterations
     )
-    result = result.astype(np.uint8) * 255
+    if output_type == "bool":
+        pass
+    elif output_type == "float":
+        result = result.astype(float)
+    else:
+        result = result.astype("uint8") * 255
     return result
 
 
-def filter_binary_dilation(np_img, disk_size=5, iterations=1):
+def filter_binary_dilation(np_img, disk_size=5, iterations=1, output_type="bool"):
     """
-    Dilate a binary object (bool, float, or uint8).
-    Args:
-        np_img: Binary image as a NumPy array.
-        disk_size: Radius of the disk structuring element used for dilation.
-        iterations: How many times to repeat the dilation.
-        output_type: Type of array to return (bool, float, or uint8).
-    Returns:
-        NumPy array (bool, float, or uint8) where edges have been dilated.
-    """
-    if np_img.dtype == np.uint8:
+  Dilate a binary object (bool, float, or uint8).
+  Args:
+    np_img: Binary image as a NumPy array.
+    disk_size: Radius of the disk structuring element used for dilation.
+    iterations: How many times to repeat the dilation.
+    output_type: Type of array to return (bool, float, or uint8).
+  Returns:
+    NumPy array (bool, float, or uint8) where edges have been dilated.
+  """
+    if np_img.dtype == "uint8":
         np_img = np_img / 255
     result = sc_morph.binary_dilation(
         np_img, sk_morphology.disk(disk_size), iterations=iterations
     )
-    result = result.astype(np.uint8) * 255
+    if output_type == "bool":
+        pass
+    elif output_type == "float":
+        result = result.astype(float)
+    else:
+        result = result.astype("uint8") * 255
     return result
-
 
 def filter_threshold(np_img, threshold):
     """
@@ -441,10 +438,10 @@ def filter_green_channel(
         and (avoid_overmask is True)
     ):
         new_green_thresh = math.ceil((255 - green_thresh) / 2 + green_thresh)
-        print(
-            "Mask percentage %3.2f%% >= overmask threshold %3.2f%% for Remove Green Channel green_thresh=%d, so try %d"
-            % (mask_percentage, overmask_thresh, green_thresh, new_green_thresh)
-        )
+        # print(
+        #     "Mask percentage %3.2f%% >= overmask threshold %3.2f%% for Remove Green Channel green_thresh=%d, so try %d"
+        #     % (mask_percentage, overmask_thresh, green_thresh, new_green_thresh)
+        # )
         gr_ch_mask = filter_green_channel(
             np_img, new_green_thresh, avoid_overmask, overmask_thresh, output_type
         )
@@ -486,10 +483,10 @@ def filter_remove_small_objects(
         and (avoid_overmask is True)
     ):
         new_min_size = min_size / 2
-        print(
-            "Mask percentage %3.2f%% >= overmask threshold %3.2f%% for Remove Small Objs size %d, so try %d"
-            % (mask_percentage, overmask_thresh, min_size, new_min_size)
-        )
+        # print(
+        #     "Mask percentage %3.2f%% >= overmask threshold %3.2f%% for Remove Small Objs size %d, so try %d"
+        #     % (mask_percentage, overmask_thresh, min_size, new_min_size)
+        # )
         rem_sm = filter_remove_small_objects(
             np_img, new_min_size, avoid_overmask, overmask_thresh, output_type
         )
@@ -798,3 +795,47 @@ def filter_blue_pen(rgb, output_type="bool"):
     else:
         result = result.astype("uint8") * 255
     return result
+
+
+def apply_filters(rgb):
+    """
+    Apply filters to image as Pillow Image.
+    Args:
+        image: Image as Pillow.
+    Returns:
+        Resulting filtered image as a Pillow Image.
+    """
+
+    # rgb = np.array(image)
+
+    mask_not_green = filter_green_channel(rgb)
+    # rgb_not_green = mask_rgb(rgb, mask_not_green)
+
+    mask_not_gray = filter_grays(rgb)
+    # rgb_not_gray = mask_rgb(rgb, mask_not_gray)
+
+    # mask_no_red_pen = filter_red_pen(rgb)
+    # rgb_no_red_pen = mask_rgb(rgb, mask_no_red_pen)
+
+    mask_no_green_pen = filter_green_pen(rgb)
+    # rgb_no_green_pen = mask_rgb(rgb, mask_no_green_pen)
+
+    mask_no_blue_pen = filter_blue_pen(rgb)
+    # rgb_no_blue_pen = mask_rgb(rgb, mask_no_blue_pen)
+        # & mask_no_red_pen
+
+    mask_gray_green_pens = (
+        mask_not_gray
+        & mask_not_green
+        & mask_no_green_pen
+        & mask_no_blue_pen
+    )
+    rgb_gray_green_pens = mask_rgb(rgb, mask_gray_green_pens)
+
+    # mask_remove_small = filter_remove_small_objects(
+    #     mask_gray_green_pens, min_size=500, output_type="bool"
+    # )
+    # rgb_remove_small = mask_rgb(rgb, mask_remove_small)
+    # return rgb_remove_small
+    return rgb_gray_green_pens
+    # return Image.fromarray(rgb_remove_small)
