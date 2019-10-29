@@ -1,3 +1,4 @@
+_push_file.sh
 # vim swp files
 *.swp
 # caffe/pytorch model files
