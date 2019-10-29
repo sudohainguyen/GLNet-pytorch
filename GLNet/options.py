@@ -150,8 +150,8 @@ class BaseOptions:
         except ValueError:
             raise ValueError('Argument --gpu_ids must be a comma-separated list of integers only')
         
-        args.mode = PhaseMode.int_to_phasemode(args.mode)
-        return self._check_args()
+        self.args.mode = PhaseMode.int_to_phasemode(args.mode)
+        # return self._check_args()
 
 class TrainingOptions(BaseOptions):
     def __init__(self):
@@ -192,14 +192,14 @@ class TrainingOptions(BaseOptions):
 
 
     def parse(self):
-        args = super(TrainingOptions, self).parse()
-        if args.lr is None:
-            if args.mode == 1 or args.mode == 3:
-                args.num_epochs = 120
-                args.lr = 5e-5
+        super(TrainingOptions, self).parse()
+        if self.args.lr is None:
+            if self.args.mode is PhaseMode.GlobalOnly or self.args.mode is PhaseMode.GlobalFromLocal:
+                self.args.num_epochs = 120
+                self.args.lr = 5e-5
             else:
-                args.num_epochs = 50
-                args.lr = 2e-5
+                self.args.num_epochs = 50
+                self.args.lr = 2e-5
 
         return self._check_args()
 
@@ -217,3 +217,40 @@ class TestingOptions(BaseOptions):
     def parse(self):
         super(TestingOptions, self).parse()
         return self._check_args()
+
+class InferenceOptions:
+    def __init__(self, description):
+        parser = argparse.ArgumentParser(description=description)
+        parser.add_argument(
+            "--n_class", type=int, default=2, help="segmentation classes"
+        )
+        parser.add_argument(
+            "--path_g", type=str, default="", help="name for global model path"
+        )
+        parser.add_argument(
+            "--path_l2g",
+            type=str,
+            default="",
+            help="name for global from local model path",
+        )
+        parser.add_argument(
+            "--set",
+            type=str,
+            default="training",
+            choices=["training", "validation", "test"]
+        )
+        parser.add_argument(
+            "--img_idx",
+            type=str,
+            default=None,
+            help="SVS file name to give prediction"
+        )
+        parser.add_argument(
+            "--save_pred",
+            action="store_true",
+            default=False
+        )
+        self.parser = parser
+    
+    def parse(self):
+        return self.parser.parse_args()
