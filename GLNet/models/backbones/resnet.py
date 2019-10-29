@@ -129,3 +129,11 @@ def resnet101(pretrained=False, **kwargs):
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet101']), strict=False)
     return model
+
+
+def get_resnet(bb_name='resnet50', pretrained=False):
+    if bb_name == 'resnet50':
+        return resnet50(pretrained=pretrained)
+    if bb_name == 'resnet101':
+        return resnet101(pretrained=pretrained)
+    raise ValueError(f'Backbone ({bb_name}) is invalid.')

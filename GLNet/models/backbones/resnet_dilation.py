@@ -5,7 +5,7 @@ import math
 import torch
 import torch.utils.model_zoo as model_zoo
 import torch.nn as nn
-from GLNet.utils.model_store import get_model_file
+from ...utils.model_store import get_model_file
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152', 'BasicBlock', 'Bottleneck']
@@ -300,3 +300,17 @@ def resnet152(pretrained=False, root='~/.encoding/models', **kwargs):
         # model.load_state_dict(model_zoo.load_url(model_urls['resnet152']))
         model.load_state_dict(torch.load('./pretrain_models/resnet152-b121ed2d.pth'), strict=False)
     return model
+
+
+def get_dilated_resnet(bb_name='d_resnet50', pretrained=False):
+    if bb_name == 'd_resnet18':
+        return resnet18(pretrained=pretrained)
+    if bb_name == 'd_resnet34':
+        return resnet34(pretrained=pretrained)
+    if bb_name == 'd_resnet50':
+        return resnet50(pretrained=pretrained)
+    if bb_name == 'd_resnet101':
+        return resnet101(pretrained=pretrained)
+    if bb_name == 'd_resnet152':
+        return resnet152(pretrained=pretrained)
+    raise ValueError(f'Backbone ({bb_name}) is invalid.')
