@@ -139,7 +139,7 @@ def main():
         num_workers=args.num_workers,
         collate_fn=collate,
         shuffle=False,
-        pin_memory=True,
+        pin_memory=False,
     )
 
     ##### sizes are (w, h) #####
@@ -189,9 +189,9 @@ def main():
             train_loss += loss.item()
             score_train, score_train_global, score_train_local = trainer.get_scores()
 
-            _iter = batch_size * (epoch - 1) + (i_batch + 1)
+            # _iter = batch_size * (epoch + 1) + (i_batch + 1)
             cur_loss = train_loss / (i_batch + 1)
-            writer.add_scalar('train_loss', cur_loss, _iter)
+            # writer.add_scalar('train_loss', cur_loss, _iter)
             if mode is PhaseMode.GlobalOnly:
                 tbar.set_description(
                     "Train loss: %.3f; global mIoU: %.3f"
@@ -300,6 +300,6 @@ def main():
                 f_log.flush()
     f_log.close()
 
-    
+
 if __name__ == "__main__":
     main()

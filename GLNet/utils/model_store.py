@@ -5,7 +5,7 @@ __all__ = ["get_model_file", "purge"]
 import os
 import zipfile
 
-from utils import download, check_sha1
+from ..utils import download, check_sha1
 
 _model_sha1 = {
     name: checksum
