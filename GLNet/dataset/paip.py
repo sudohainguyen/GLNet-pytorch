@@ -1,5 +1,4 @@
 import os
-
 import random
 import numpy as np
 from PIL import Image, ImageFile
@@ -10,16 +9,10 @@ from torchvision import transforms
 from skimage import io
 
 from ..utils.filters import (
-    filter_green_channel,
-    filter_red_pen,
-    filter_blue_pen,
-    filter_green_pen,
-    filter_remove_small_objects,
-    filter_grays,
-    mask_rgb,
-    add_extra_pixels,
-    _transform
+    apply_filters
 )
+
+from ..utils.processing import experiment, add_extra_pixels
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -34,47 +27,16 @@ def class_to_RGB(label):
     return torch.as_tensor(colmap, dtype=torch.uint8)
 
 
-def apply_filters(np_img):
-    """
-    Apply filters to image as NumPy array and optionally save and/or display filtered images.
-    Args:
-        np_img: Image as NumPy array.
-    Returns:
-        Resulting filtered image as a NumPy array.
-    """
-    rgb = np_img
+def _transform(image, label):
+    if np.random.random() > 0.5:
+        image = transforms.functional.hflip(image)
+        label = transforms.functional.hflip(label)
 
-    mask_not_green = filter_green_channel(rgb)
-    # rgb_not_green = mask_rgb(rgb, mask_not_green)
-
-    mask_not_gray = filter_grays(rgb)
-    # rgb_not_gray = mask_rgb(rgb, mask_not_gray)
-
-    mask_no_red_pen = filter_red_pen(rgb)
-    # rgb_no_red_pen = mask_rgb(rgb, mask_no_red_pen)
-
-    mask_no_green_pen = filter_green_pen(rgb)
-    # rgb_no_green_pen = mask_rgb(rgb, mask_no_green_pen)
-
-    mask_no_blue_pen = filter_blue_pen(rgb)
-    # rgb_no_blue_pen = mask_rgb(rgb, mask_no_blue_pen)
-
-    mask_gray_green_pens = (
-        mask_not_gray
-        & mask_not_green
-        & mask_no_red_pen
-        & mask_no_green_pen
-        & mask_no_blue_pen
-    )
-    # rgb_gray_green_pens = mask_rgb(rgb, mask_gray_green_pens)
-
-    mask_remove_small = filter_remove_small_objects(
-        mask_gray_green_pens, min_size=500, output_type="bool"
-    )
-    rgb_remove_small = mask_rgb(rgb, mask_remove_small)
-
-    img = rgb_remove_small
-    return img
+    if np.random.random() > 0.5:
+        degree = random.choice([90, 180, 270])
+        image = transforms.functional.rotate(image, degree)
+        label = transforms.functional.rotate(label, degree)
+    return image, label
 
 
 class Paip(data.Dataset):
@@ -87,11 +49,12 @@ class Paip(data.Dataset):
         self.ids = ids
         self.img_shape = (img_shape, img_shape)
 
-        # self.resizer = transforms.Resize((4096, 4096))
-
     def __getitem__(self, index):
         sample = {'id': self.ids[index][:-4]}
         image = Image.open(os.path.join(self.root, 'images', self.ids[index]))
+        
+        # image = experiment(image)
+        # image = Image.fromarray(apply_filters(np.array(image)))
 
         # handle edge patches
         if image.size != self.img_shape:

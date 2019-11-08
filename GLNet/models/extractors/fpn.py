@@ -126,7 +126,7 @@ class FPN_Local(nn.Module):
         self.latlayer1 = nn.Conv2d(1024 * fold, 256, kernel_size=1, stride=1, padding=0)
         self.latlayer2 = nn.Conv2d(512 * fold, 256, kernel_size=1, stride=1, padding=0)
         self.latlayer3 = nn.Conv2d(256 * fold, 256, kernel_size=1, stride=1, padding=0)
-        
+
         # Smooth layers
         # ps0
         self.smooth1_1 = nn.Conv2d(256 * fold, 256, kernel_size=3, stride=1, padding=1)
@@ -151,7 +151,7 @@ class FPN_Local(nn.Module):
 
         if ps_exts:
             ps0_ext, ps1_ext, ps2_ext = ps_exts
-        
+
         # Top-down
         p5 = self.toplayer(
             torch.cat(

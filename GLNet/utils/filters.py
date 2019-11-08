@@ -1,5 +1,5 @@
 import math
-import random
+import cv2 as cv
 import numpy as np
 import scipy.ndimage.morphology as sc_morph
 import skimage.color as sk_color
@@ -7,9 +7,6 @@ import skimage.exposure as sk_exposure
 import skimage.feature as sk_feature
 import skimage.filters as sk_filters
 import skimage.morphology as sk_morphology
-from PIL import Image
-
-from torchvision import transforms
 
 
 def rgb_to_grayscale(np_img):
@@ -36,6 +33,15 @@ def obtain_complement(np_img):
         Complement image as Numpy array.
     """
     return 255 - np_img
+
+
+def filter_black_to_white(rgb):
+    r = rgb[:, :, 0] == 0
+    g = rgb[:, :, 1] == 0
+    b = rgb[:, :, 2] == 0
+    result = r & g & b
+    rgb[result] = 255
+    return rgb
 
 
 def filter_hysteresis_threshold(np_img, low=50, high=100):
@@ -75,7 +81,7 @@ def filter_local_otsu_threshold(np_img, disk_size=3):
     local Otsu threshold.
     Args:
         np_img: Image as a NumPy array.
-        disk_size: Radius of the disk structuring element used to compute the Otsu threshold for each pixel.
+        disk_size: Radius of the disk structring element used to compute the Otsu threshold for each pixel.
         output_type: Type of array to return (bool, float, or uint8).
     Returns:
         NumPy array (bool, float, or uint8) where local Otsu threshold values have been applied to original image.
@@ -339,6 +345,7 @@ def filter_binary_dilation(np_img, disk_size=5, iterations=1, output_type="bool"
         result = result.astype("uint8") * 255
     return result
 
+
 def filter_threshold(np_img, threshold):
     """
     Return mask where a pixel has a value if it exceeds the threshold value.
@@ -366,17 +373,6 @@ def uint8_to_bool(np_img):
     result = (np_img / 255).astype(bool)
     return result
 
-
-def _transform(image, label):
-    if np.random.random() > 0.5:
-        image = transforms.functional.hflip(image)
-        label = transforms.functional.hflip(label)
-
-    if np.random.random() > 0.5:
-        degree = random.choice([90, 180, 270])
-        image = transforms.functional.rotate(image, degree)
-        label = transforms.functional.rotate(label, degree)
-    return image, label
 
 def mask_rgb(rgb, mask):
     """
@@ -797,6 +793,32 @@ def filter_blue_pen(rgb, output_type="bool"):
     return result
 
 
+def filter_remove_background(rgb, red_lower_thresh=235, green_lower_thresh=210, blue_lower_thresh=235, output_type="bool"):
+    """
+    Create a mask to filter out pixels which are pre-defined as background
+    Args:
+        np_img: RGB image as a NumPy array.
+        red_lower_thresh: Red channel lower threshold value.
+        green_lower_thresh: Green channel lower threshold value.
+        blue_lower_thresh: Blue channel lower threshold value.
+        output_type: Type of array to return (bool, float, or uint8).
+    Returns:
+        NumPy array representing a mask where background pixels have been masked out.
+    """
+    r = rgb[:, :, 0] > red_lower_thresh
+    g = rgb[:, :, 1] > green_lower_thresh
+    b = rgb[:, :, 2] > blue_lower_thresh
+    result = ~(r & g & b)
+
+    if output_type == "bool":
+        pass
+    elif output_type == "float":
+        result = result.astype(float)
+    else:
+        result = result.astype("uint8") * 255
+    return result
+
+
 def apply_filters(rgb):
     """
     Apply filters to image as Pillow Image.
@@ -808,7 +830,9 @@ def apply_filters(rgb):
 
     # rgb = np.array(image)
 
-    mask_not_green = filter_green_channel(rgb)
+    mask_no_bg = filter_remove_background(rgb)
+
+    # mask_not_green = filter_green_channel(rgb)
     # rgb_not_green = mask_rgb(rgb, mask_not_green)
 
     mask_not_gray = filter_grays(rgb)
@@ -817,25 +841,28 @@ def apply_filters(rgb):
     # mask_no_red_pen = filter_red_pen(rgb)
     # rgb_no_red_pen = mask_rgb(rgb, mask_no_red_pen)
 
-    mask_no_green_pen = filter_green_pen(rgb)
+    # mask_no_green_pen = filter_green_pen(rgb)
     # rgb_no_green_pen = mask_rgb(rgb, mask_no_green_pen)
 
-    mask_no_blue_pen = filter_blue_pen(rgb)
+    # mask_no_blue_pen = filter_blue_pen(rgb)
     # rgb_no_blue_pen = mask_rgb(rgb, mask_no_blue_pen)
         # & mask_no_red_pen
 
+        # & mask_not_green
+        # & mask_no_green_pen
+        # & mask_no_blue_pen
     mask_gray_green_pens = (
-        mask_not_gray
-        & mask_not_green
-        & mask_no_green_pen
-        & mask_no_blue_pen
+        mask_no_bg
+        & mask_not_gray
     )
-    rgb_gray_green_pens = mask_rgb(rgb, mask_gray_green_pens)
+    # rgb_gray_green_pens = mask_rgb(rgb, mask_gray_green_pens)
 
-    # mask_remove_small = filter_remove_small_objects(
-    #     mask_gray_green_pens, min_size=500, output_type="bool"
-    # )
-    # rgb_remove_small = mask_rgb(rgb, mask_remove_small)
+    mask_remove_small = filter_remove_small_objects(
+        mask_gray_green_pens, min_size=500, output_type="bool"
+    )
+    rgb_remove_small = mask_rgb(rgb, mask_remove_small)
+
+    processed = filter_black_to_white(rgb_remove_small)
     # return rgb_remove_small
-    return rgb_gray_green_pens
+    return processed
     # return Image.fromarray(rgb_remove_small)
