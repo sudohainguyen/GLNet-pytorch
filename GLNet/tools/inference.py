@@ -10,7 +10,6 @@ from skimage import io
 from tqdm import tqdm
 
 import torch
-from torch import nn
 import torch.nn.functional as F
 
 sys.path.append('../GLNet-pytorch/')
@@ -151,6 +150,12 @@ def predict_on_single_patch(image_as_tensor, model, global_fixed, size_g=(1008, 
     return predictions
 
 
+def predict_on_row(dz_obj, row, cols, model, global_fixed):
+    for col in cols:
+        tile = dz.get_tile(dz.level_count - 1, (col, row))
+        if tile.size != (4096, 4096):
+            tile = add_extra_pixels(tile, expected_shape=(4096, 4096))
+
 def predict_on_svs(img_idx, model, global_fixed, save_pred=False):
     slide = OpenSlide(os.path.join(DATA_DIR, 'ws_images', f'{img_idx}.svs'))
     mask = io.imread(os.path.join(DATA_DIR, 'viable_masks', f'{img_idx}_viable.tif'))
@@ -160,6 +165,10 @@ def predict_on_svs(img_idx, model, global_fixed, save_pred=False):
     img = np.array(img)
     
     cols, rows = dz.level_tiles[-1]
+    
+    num_processes = multiprocessing.cpu_count()
+    if num_processes > cols:
+        num_processes = cols
 
     # out = np.zeros_like(img)
     out = np.zeros((rows * 256, cols * 256, 3), dtype=np.uint8)
@@ -204,6 +213,7 @@ def predict_on_svs(img_idx, model, global_fixed, save_pred=False):
     if save_pred:
         fig.savefig(f'Pred_{img_idx}.png')
     return out
+
 
 if __name__ == "__main__":
     args = InferenceOptions("Inference options").parse()

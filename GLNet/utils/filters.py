@@ -1,5 +1,5 @@
 import math
-import cv2 as cv
+import cv2
 import numpy as np
 import scipy.ndimage.morphology as sc_morph
 import skimage.color as sk_color
@@ -89,6 +89,86 @@ def filter_local_otsu_threshold(np_img, disk_size=3):
     local_otsu = sk_filters.rank.otsu(np_img, sk_morphology.disk(disk_size))
     local_otsu = local_otsu.astype(np.uint8) * 255
     return local_otsu
+
+
+def filter_closing(np_img, kernel_size, iterations=1):
+    """
+    Close a RGB Image, Closing is an dilation followed by erosion.
+    Closing can be used to remove small holes.
+    Args:
+        np_img: rgb image as a numpy array.
+        kernel_size: size of kernel which is convolved with the image (should be odd)
+        iterations: How many times to repeat.
+    """
+    kernel = np.ones((kernel_size, kernel_size))
+    result = cv2.morphologyEx(np_img, cv2.MORPH_CLOSE, kernel, iterations=iterations)
+    return result
+
+
+def filter_binary_closing(np_img, disk_size=3, iterations=1, output_type="uint8"):
+    """
+    Close a binary object (bool, float, or uint8). Closing is a dilation followed by an erosion.
+    Closing can be used to remove small holes.
+    Args:
+        np_img: Binary image as a NumPy array.
+        disk_size: Radius of the disk structuring element used for closing.
+        iterations: How many times to repeat.
+        output_type: Type of array to return (bool, float, or uint8).
+    Returns:
+        NumPy array (bool, float, or uint8) following binary closing.
+    """
+    if np_img.dtype == "uint8":
+        np_img = np_img / 255
+    result = sc_morph.binary_closing(
+        np_img, sk_morphology.disk(disk_size), iterations=iterations
+    )
+    if output_type == "bool":
+        pass
+    elif output_type == "float":
+        result = result.astype(float)
+    else:
+        result = result.astype("uint8") * 255
+    return result
+
+
+def filter_opening(np_img, kernel_size=3, iterations=1):
+    """
+    Open a RGB Image, Opening is an erosion followed by dilation.
+    Opening can be used to remove small objects
+    Args:
+        np_img: rgb image as a numpy array.
+        kernel_size: size of kernel which is convolved with the image (should be odd)
+        iterations: How many times to repeat.
+    """
+    kernel = np.ones((kernel_size, kernel_size))
+    result = cv2.morphologyEx(np_img, cv2.MORPH_OPEN, kernel, iterations=iterations)
+    return result
+
+
+def filter_binary_opening(np_img, disk_size=3, iterations=1, output_type="uint8"):
+    """
+    Open a binary object (bool, float, or uint8). Opening is an erosion followed by a dilation.
+    Opening can be used to remove small objects.
+    Args:
+        np_img: Binary image as a NumPy array.
+        disk_size: Radius of the disk structuring element used for opening.
+        iterations: How many times to repeat.
+        output_type: Type of array to return (bool, float, or uint8).
+    Returns:
+        NumPy array (bool, float, or uint8) following binary opening.
+    """
+    if np_img.dtype == "uint8":
+        np_img = np_img / 255
+    result = sc_morph.binary_opening(
+        np_img, sk_morphology.disk(disk_size), iterations=iterations
+    )
+    if output_type == "bool":
+        pass
+    elif output_type == "float":
+        result = result.astype(float)
+    else:
+        result = result.astype("uint8") * 255
+    return result
 
 
 def filter_entropy(np_img, neighborhood=9, threshold=5):
@@ -453,7 +533,7 @@ def filter_green_channel(
     return np_img
 
 
-def filter_remove_small_objects(
+def filter_remove_small_objects (
     np_img, min_size=3000, avoid_overmask=True, overmask_thresh=95, output_type="uint8"
 ):
     """
@@ -844,7 +924,7 @@ def apply_filters(rgb):
     # mask_no_green_pen = filter_green_pen(rgb)
     # rgb_no_green_pen = mask_rgb(rgb, mask_no_green_pen)
 
-    # mask_no_blue_pen = filter_blue_pen(rgb)
+    mask_no_blue_pen = filter_blue_pen(rgb)
     # rgb_no_blue_pen = mask_rgb(rgb, mask_no_blue_pen)
         # & mask_no_red_pen
 
@@ -854,15 +934,15 @@ def apply_filters(rgb):
     mask_gray_green_pens = (
         mask_no_bg
         & mask_not_gray
+        & mask_no_blue_pen
     )
-    # rgb_gray_green_pens = mask_rgb(rgb, mask_gray_green_pens)
 
     mask_remove_small = filter_remove_small_objects(
         mask_gray_green_pens, min_size=500, output_type="bool"
     )
-    rgb_remove_small = mask_rgb(rgb, mask_remove_small)
+    rgb = mask_rgb(rgb, mask_remove_small)
+    opening = filter_opening(rgb, kernel_size=3, iterations=1)
 
-    processed = filter_black_to_white(rgb_remove_small)
+    processed = filter_black_to_white(opening)
     # return rgb_remove_small
     return processed
-    # return Image.fromarray(rgb_remove_small)

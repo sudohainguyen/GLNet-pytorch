@@ -12,7 +12,7 @@ from ..utils.filters import (
     apply_filters
 )
 
-from ..utils.processing import experiment, add_extra_pixels
+from ..utils.processing import add_extra_pixels
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -53,9 +53,6 @@ class Paip(data.Dataset):
         sample = {'id': self.ids[index][:-4]}
         image = Image.open(os.path.join(self.root, 'images', self.ids[index]))
         
-        # image = experiment(image)
-        # image = Image.fromarray(apply_filters(np.array(image)))
-
         # handle edge patches
         if image.size != self.img_shape:
             image = add_extra_pixels(image, expected_shape=self.img_shape)
@@ -68,6 +65,7 @@ class Paip(data.Dataset):
         if self.transform and self.label:
             image, label = _transform(image, label)
 
+        image = Image.fromarray(apply_filters(np.array(image)))
         sample['image'] = image
         sample['label'] = label
         return sample

@@ -6,7 +6,7 @@ import torch
 from torch.autograd import Variable
 from torchvision import transforms
 
-from .filters import apply_filters
+from .filters import rgb_to_grayscale
 
 normalize = transforms.Compose(
     [
@@ -17,25 +17,16 @@ normalize = transforms.Compose(
 )
 
 
-def add_extra_pixels(image, expected_shape=(2048, 2048), is_mask=False):
+def add_extra_pixels(image, expected_shape=(4096, 4096), is_mask=False):
     if is_mask:
         temp = np.zeros(expected_shape, dtype=np.uint8)
     else:
         image = np.array(image)
         temp = np.zeros((expected_shape[0], expected_shape[1], 3), dtype=np.uint8)
-        temp += 243
+        temp += 255
 
     temp[: image.shape[0], : image.shape[1]] = image
     return Image.fromarray(temp)
-
-
-def experiment(image):
-    np_img = np.array(image)
-    gauss = cv2.GaussianBlur(np_img, (0,0), 30)
-    unsharp_image = cv2.addWeighted(np_img, 2, gauss, -1, 0)
-    
-    unsharp_image = apply_filters(unsharp_image)
-    return Image.fromarray(unsharp_image)
 
 
 def resize(images, shape, is_mask=False):
@@ -176,3 +167,11 @@ def one_hot_gaussian_blur(index, classes):
             mask[i][j] = cv2.GaussianBlur(mask[i][j], (0, 0), 8)
 
     return mask
+
+
+def remove_mask_overlay_background(rgb, predicted_mask):
+    grayscale = rgb_to_grayscale(rgb)
+    bg = np.where(grayscale == 255)
+    _reversed = np.ones_like(grayscale)
+    _reversed[bg] = 0
+    return predicted_mask * _reversed

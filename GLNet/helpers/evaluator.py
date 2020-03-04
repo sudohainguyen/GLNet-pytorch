@@ -12,12 +12,13 @@ from ..utils.processing import (
     masks_transform,
     resize,
     global2patch,
-    patch2global
+    patch2global,
+    remove_mask_overlay_background
 )
 
 
 class Evaluator(object):
-    def __init__(self, n_class, size_g, size_p, sub_batch_size=6, mode=PhaseMode.GlobalOnly, test=False):
+    def __init__(self, n_class, size_g, size_p, sub_batch_size=6, mode=PhaseMode.GlobalOnly, validation=True):
         self.metrics_global = ConfusionMatrix(n_class)
         self.metrics_local = ConfusionMatrix(n_class)
         self.metrics = ConfusionMatrix(n_class)
@@ -28,9 +29,9 @@ class Evaluator(object):
 
         self.sub_batch_size = sub_batch_size
         self.mode = mode
-        self.test = test
+        self.validation = validation
 
-        if test:
+        if validation:
             self.flip_range = [False, True]
             self.rotate_range = [0, 1, 2, 3]
         else:
@@ -430,12 +431,11 @@ class Evaluator(object):
                 .numpy()[0]
                 for i in range(len(images))
             ]
-            if not self.test:
-                # labels = sample["label"]  # PIL images
-                # lbls = [RGB_mapping_to_class(np.array(label)) for label in labels]
-                # labels = [Image.fromarray(lbl) for lbl in lbls]
-                labels_npy = masks_transform(sample["label"], numpy=True)
-                self.metrics_global.update(labels_npy, predictions_global)
+            # if self.validation:
+            labels_npy = masks_transform(sample["label"], numpy=True)
+            for i, image in enumerate(sample["image"]):
+                predictions_global[i] = remove_mask_overlay_background(np.array(image), predictions_global[i])
+            self.metrics_global.update(labels_npy, predictions_global)
 
             if self.mode is PhaseMode.LocalFromGlobal or self.mode is PhaseMode.GlobalFromLocal:
                 # patch predictions 
@@ -447,8 +447,12 @@ class Evaluator(object):
                 # combined/ensemble predictions 
                 # predictions = scores.argmax(1) # b, h, w
                 predictions = [score.argmax(1)[0] for score in scores]
-                if not self.test:
-                    self.metrics_local.update(labels_npy, predictions_local)
-                    self.metrics.update(labels_npy, predictions)
+                for i, image in enumerate(sample["image"]):
+                    predictions[i] = remove_mask_overlay_background(np.array(image), predictions[i])
+                    predictions_local[i] = remove_mask_overlay_background(np.array(image), predictions_local[i])
+
+                # if self.validation:
+                self.metrics_local.update(labels_npy, predictions_local)
+                self.metrics.update(labels_npy, predictions)
                 return predictions, predictions_global, predictions_local
             return None, predictions_global, None

@@ -22,6 +22,7 @@ from GLNet.helpers import (
     collate
 )
 from GLNet.options import TrainingOptions
+from GLNet.utils.core import print_info
 from GLNet.utils import PhaseMode
 
 torch.backends.cudnn.deterministic = True
@@ -37,8 +38,8 @@ def gen_logs(mode, train_scores, val_scores, epoch, num_epochs):
             + "epoch [{}/{}] Global -- IoU: train = {:.4f}, val = {:.4f}\n".format(
                 epoch + 1,
                 num_epochs,
-                np.mean(np.nan_to_num(score_train_global["iou"][1:])),
-                np.mean(np.nan_to_num(score_val_global["iou"][1:]))
+                np.mean(np.nan_to_num(score_train_global["iou"])),
+                np.mean(np.nan_to_num(score_val_global["iou"]))
             )
         )
         log += "Confusion Matrix:\n"
@@ -50,8 +51,8 @@ def gen_logs(mode, train_scores, val_scores, epoch, num_epochs):
             + "epoch [{}/{}] IoU: train = {:.4f}, val = {:.4f}\n".format(
                 epoch + 1,
                 num_epochs,
-                np.mean(np.nan_to_num(score_train["iou"][1:])),
-                np.mean(np.nan_to_num(score_val["iou"][1:])),
+                np.mean(np.nan_to_num(score_train["iou"])),
+                np.mean(np.nan_to_num(score_val["iou"])),
             )
         )
         log = (
@@ -59,8 +60,8 @@ def gen_logs(mode, train_scores, val_scores, epoch, num_epochs):
             + "epoch [{}/{}] Local  -- IoU: train = {:.4f}, val = {:.4f}\n".format(
                 epoch + 1,
                 num_epochs,
-                np.mean(np.nan_to_num(score_train_local["iou"][1:])),
-                np.mean(np.nan_to_num(score_val_local["iou"][1:])),
+                np.mean(np.nan_to_num(score_train_local["iou"])),
+                np.mean(np.nan_to_num(score_val_local["iou"])),
             )
         )
         log = (
@@ -68,8 +69,8 @@ def gen_logs(mode, train_scores, val_scores, epoch, num_epochs):
             + "epoch [{}/{}] Global -- IoU: train = {:.4f}, val = {:.4f}\n".format(
                 epoch + 1,
                 num_epochs,
-                np.mean(np.nan_to_num(score_train_global["iou"][1:])),
-                np.mean(np.nan_to_num(score_val_global["iou"][1:]))
+                np.mean(np.nan_to_num(score_train_global["iou"])),
+                np.mean(np.nan_to_num(score_val_global["iou"]))
             )
         )
         log += "Confusion Matrix:\n"
@@ -87,8 +88,7 @@ def gen_logs(mode, train_scores, val_scores, epoch, num_epochs):
 
 def main():
     args = TrainingOptions().parse()
-    print(args.task_name)
-    
+    # print(args.task_name)
     mode = args.mode
     data_path = args.data_path
     model_path = args.model_path
@@ -98,7 +98,9 @@ def main():
     batch_size = args.batch_size
     n_class = args.n_class
 
-    print("mode:", mode.name)
+    print_info('----------------------------------------------------------------------\n'
+           f'|GLNet Training Mode: {mode.name} (Task: {args.task_name})|\n'
+           '----------------------------------------------------------------------',['yellow','bold'])
 
     if not os.path.exists(model_path):
         os.mkdir(model_path)
@@ -120,7 +122,7 @@ def main():
         if is_image_file(image_name)
     ]
 
-    dataset_train = Paip(os.path.join(data_path, "train"), ids_train, label=True, img_shape=4096, transform=True)
+    dataset_train = Paip(os.path.join(data_path, "train"), ids_train, label=True, img_shape=1024, transform=True)
     # dataset_train = DeepGlobe(os.path.join(data_path, "train"), ids_train, label=True, transform=True)
     dataloader_train = torch.utils.data.DataLoader(
         dataset=dataset_train,
@@ -128,10 +130,10 @@ def main():
         num_workers=args.num_workers,
         collate_fn=collate,
         shuffle=True,
-        pin_memory=True,
+        pin_memory=False,
     )
 
-    dataset_val = Paip(os.path.join(data_path, "val"), ids_val, label=True, img_shape=4096)
+    dataset_val = Paip(os.path.join(data_path, "val"), ids_val, label=True, img_shape=1024)
     # dataset_val = DeepGlobe(os.path.join(data_path, "train"), ids_val, label=True)
     dataloader_val = torch.utils.data.DataLoader(
         dataset=dataset_val,
@@ -173,7 +175,7 @@ def main():
     )
     
     # if args.validation:
-    evaluator = Evaluator(n_class, size_g, size_p, sub_batch_size, mode)
+    evaluator = Evaluator(n_class, size_g, size_p, sub_batch_size, mode, False)
 
     best_pred = 0.0
     print("start training......")
@@ -274,12 +276,12 @@ def main():
                 evaluator.reset_metrics()
 
                 if mode is PhaseMode.GlobalOnly:
-                    val_acc = np.mean(np.nan_to_num(score_val_global["iou"][1:]))
-                    writer.add_scalar('train_acc_global', np.mean(np.nan_to_num(score_train_global["iou"][1:])), epoch)
+                    val_acc = np.mean(np.nan_to_num(score_val_global["iou"]))
+                    writer.add_scalar('train_acc_global', np.mean(np.nan_to_num(score_train_global["iou"])), epoch)
                     writer.add_scalar('val_acc_global', val_acc, epoch)
                 else:
-                    val_acc = np.mean(np.nan_to_num(score_val["iou"][1:]))
-                    writer.add_scalar('train_acc', np.mean(np.nan_to_num(score_train["iou"][1:])), epoch)
+                    val_acc = np.mean(np.nan_to_num(score_val["iou"]))
+                    writer.add_scalar('train_acc', np.mean(np.nan_to_num(score_train["iou"])), epoch)
                     writer.add_scalar('val_acc', val_acc, epoch)
 
                 # Only save best model which have highest validation accuracy

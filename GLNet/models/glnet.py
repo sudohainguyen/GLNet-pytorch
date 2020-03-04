@@ -193,11 +193,11 @@ class GLNet(nn.Module):
             if self.patch_n == 0:
                 self.c2_g, self.c3_g, self.c4_g, self.c5_g = \
                     global_model.module.backbone_global.forward(image_global)
-                    # self.backbone_global.forward(image_global)
+                    # self.module.backbone_global.forward(image_global)
 
                 self.output_g, self.ps0_g, self.ps1_g, self.ps2_g, self.ps3_g = \
                     global_model.module.fpn_global.forward((self.c2_g, self.c3_g, self.c4_g, self.c5_g))
-                    # self.fpn_global.forward((self.c2_g, self.c3_g, self.c4_g, self.c5_g))
+                    # self.module.fpn_global.forward((self.c2_g, self.c3_g, self.c4_g, self.c5_g))
 
                 # self.output_g = F.interpolate(self.output_g, image_global.size()[2:], mode='nearest')
             self.patch_n += patches.size()[0]
